@@ -1,6 +1,8 @@
-import { GearSix, X, Sparkle, WarningCircle, PencilSimple } from '@phosphor-icons/react'
+import { GearSix, SidebarSimple, Sparkle, WarningCircle, PencilSimple } from '@phosphor-icons/react'
+import type { ReactNode } from 'react'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { Button } from '@/components/ui/button'
+import { TOOLBAR_ICON_BUTTON_CLASSNAME, TOOLBAR_ICON_SIZE } from '@/components/ui/toolbarIconButton'
 import { useDragRegion } from '../../hooks/useDragRegion'
 import { translate, type AppLocale } from '../../lib/i18n'
 import { hasFrontmatterWarnings, type FrontmatterWarnings } from '../../utils/frontmatter'
@@ -25,10 +27,11 @@ function FrontmatterWarningsButton({ locale, onOpenRawEditor }: { locale: AppLoc
   )
 }
 
-export function InspectorHeader({ collapsed, frontmatterWarnings, locale = 'en', onToggle, onOpenRawEditor }: {
+export function InspectorHeader({ collapsed, frontmatterWarnings, locale = 'en', panelTabs, onToggle, onOpenRawEditor }: {
   collapsed: boolean
   frontmatterWarnings?: FrontmatterWarnings
   locale?: AppLocale
+  panelTabs?: ReactNode
   onToggle: () => void
   onOpenRawEditor?: () => void
 }) {
@@ -37,7 +40,7 @@ export function InspectorHeader({ collapsed, frontmatterWarnings, locale = 'en',
   const showWarnings = Boolean(frontmatterWarnings && hasFrontmatterWarnings(frontmatterWarnings) && onOpenRawEditor)
   const propertiesIcon = (testId?: string) => (
     <GearSix
-      size={16}
+      size={TOOLBAR_ICON_SIZE}
       weight="regular"
       className="shrink-0 text-muted-foreground"
       data-testid={testId}
@@ -49,33 +52,39 @@ export function InspectorHeader({ collapsed, frontmatterWarnings, locale = 'en',
     <div
       ref={dragRegionRef}
       className="flex shrink-0 items-center border-b border-border"
-      style={{ height: 52, padding: '6px 12px', gap: 8, cursor: 'default' }}
+      style={{ height: 52, padding: '6px 16px', gap: 8, cursor: 'default' }}
     >
       {collapsed ? (
-        <button type="button"
-          className="shrink-0 border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground"
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className={TOOLBAR_ICON_BUTTON_CLASSNAME}
           onClick={onToggle}
           title={toggleLabel}
           aria-label={toggleLabel}
         >
           {propertiesIcon('properties-panel-icon')}
-        </button>
+        </Button>
       ) : (
         <>
-          {propertiesIcon('properties-panel-icon')}
+          {panelTabs ?? propertiesIcon('properties-panel-icon')}
           <span className="text-muted-foreground" style={{ fontSize: 13, fontWeight: 600 }}>{propertiesTitle}</span>
           {showWarnings && onOpenRawEditor && (
             <FrontmatterWarningsButton locale={locale} onOpenRawEditor={onOpenRawEditor} />
           )}
           <span className="flex-1" />
-          <button type="button"
-            className="shrink-0 border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground"
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className={TOOLBAR_ICON_BUTTON_CLASSNAME}
             onClick={onToggle}
             title={toggleLabel}
             aria-label={toggleLabel}
           >
-            <X size={16} />
-          </button>
+            <SidebarSimple size={TOOLBAR_ICON_SIZE} weight="regular" />
+          </Button>
         </>
       )}
     </div>

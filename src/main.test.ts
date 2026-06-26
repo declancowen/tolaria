@@ -123,6 +123,7 @@ describe('main entrypoint', () => {
     vi.clearAllMocks()
     document.body.innerHTML = '<div id="root"></div>'
     document.body.className = ''
+    delete (globalThis as { isTauri?: boolean }).isTauri
     window.__tolariaFrontendReady = false
     sessionStorage.clear()
   })
@@ -157,12 +158,21 @@ describe('main entrypoint', () => {
     expect(mocks.sentryHandler).toHaveBeenCalledWith(error, { componentStack: '' })
   })
 
-  it('marks macOS chrome for traffic-light layout offsets', async () => {
+  it('marks native macOS chrome for traffic-light layout offsets', async () => {
+    ;(globalThis as { isTauri?: boolean }).isTauri = true
     await withUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 Safari/605.1.15', async () => {
       await importEntrypoint()
     })
 
     expect(document.body).toHaveClass('mac-chrome')
+  }, 60_000)
+
+  it('does not reserve macOS traffic-light space in browser dev', async () => {
+    await withUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 Safari/605.1.15', async () => {
+      await importEntrypoint()
+    })
+
+    expect(document.body).not.toHaveClass('mac-chrome')
   }, 60_000)
 
   it('ignores ResizeObserver loop notifications instead of showing the fatal overlay', async () => {

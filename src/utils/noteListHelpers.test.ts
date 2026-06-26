@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildRelationshipGroups, countAllByFilter, countAllNotesByFilter, countByFilter, filterEntries } from './noteListHelpers'
+import { buildRelationshipGroups, countAllByFilter, countAllNotesByFilter, countByFilter, filterEntries, groupEntriesByOption } from './noteListHelpers'
 import { allSelection, makeEntry, mockEntries } from '../test-utils/noteListTestUtils'
 import type { WorkspaceIdentity } from '../types'
 
@@ -177,7 +177,8 @@ describe('filterEntries', () => {
       makeEntry({ path: 'C:\\Users\\luca\\Vault\\客户\\计划.md', title: 'Unicode' }),
     ]
 
-    expect(filterEntries(entries, { kind: 'folder', path: 'Client Work' }).map((entry) => entry.title)).toEqual(['Alpha', 'Beta'])
+    expect(filterEntries(entries, { kind: 'folder', path: 'Client Work' }).map((entry) => entry.title)).toEqual(['Alpha'])
+    expect(filterEntries(entries, { kind: 'folder', path: 'Client Work/Nested' }).map((entry) => entry.title)).toEqual(['Beta'])
     expect(filterEntries(entries, { kind: 'folder', path: '客户' }).map((entry) => entry.title)).toEqual(['Unicode'])
   })
 
@@ -249,6 +250,50 @@ describe('countByFilter', () => {
 
   it('returns zeros when a type has no matching entries', () => {
     expect(countByFilter([], 'Project')).toEqual({ open: 0, archived: 0 })
+  })
+})
+
+describe('groupEntriesByOption', () => {
+  it('groups entries by built-in status while keeping missing values last', () => {
+    const entries = [
+      makeEntry({ path: '/active.md', title: 'Active', status: 'Active' }),
+      makeEntry({ path: '/done.md', title: 'Done', status: 'Done' }),
+      makeEntry({ path: '/missing.md', title: 'Missing', status: null }),
+    ]
+
+    const groups = groupEntriesByOption(entries, 'status')
+
+    expect(groups.map((group) => ({ label: group.label, titles: group.entries.map((entry) => entry.title) }))).toEqual([
+      { label: 'Active', titles: ['Active'] },
+      { label: 'Done', titles: ['Done'] },
+      { label: '', titles: ['Missing'] },
+    ])
+  })
+
+  it('groups entries by author-like properties', () => {
+    const entries = [
+      makeEntry({ path: '/owner-a.md', title: 'Owner A', properties: { Owner: 'Declan' } }),
+      makeEntry({ path: '/author-a.md', title: 'Author A', properties: { Author: 'Declan' } }),
+      makeEntry({ path: '/author-b.md', title: 'Author B', properties: { author: 'Alex' } }),
+    ]
+
+    const groups = groupEntriesByOption(entries, 'author')
+
+    expect(groups.map((group) => ({ label: group.label, titles: group.entries.map((entry) => entry.title) }))).toEqual([
+      { label: 'Declan', titles: ['Owner A', 'Author A'] },
+      { label: 'Alex', titles: ['Author B'] },
+    ])
+  })
+
+  it('groups entries by custom properties', () => {
+    const entries = [
+      makeEntry({ path: '/high.md', title: 'High', properties: { Priority: 'High' } }),
+      makeEntry({ path: '/low.md', title: 'Low', properties: { Priority: 'Low' } }),
+    ]
+
+    const groups = groupEntriesByOption(entries, 'property:Priority')
+
+    expect(groups.map((group) => group.label)).toEqual(['High', 'Low'])
   })
 })
 

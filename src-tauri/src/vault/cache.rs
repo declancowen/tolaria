@@ -13,14 +13,15 @@ use super::path_identity::{
     normalize_path_for_identity, push_unique_relative_path, relative_path_key,
     vault_relative_path_string,
 };
-use super::{is_md_file, parse_md_file, parse_non_md_file, scan_vault, VaultEntry};
+use super::{is_hidden_vault_file, is_md_file, parse_md_file, parse_non_md_file, scan_vault, VaultEntry};
 
 // --- Vault Cache ---
 
 /// Bump this when VaultEntry fields change to force a full rescan.
 /// v12: fix gray_matter YAML sanitization (unquoted colons / hash comments in list items)
 /// v14: preserve scalar-array custom frontmatter properties in VaultEntry
-const CACHE_VERSION: u32 = 14;
+/// v15: hide root-level AI/tooling guidance files from user-facing vault scans
+const CACHE_VERSION: u32 = 15;
 const CACHE_WRITE_LOCK_STALE_SECS: u64 = 30;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -483,7 +484,7 @@ fn parse_files_at(
         .iter()
         .filter_map(|rel| {
             let abs = vault.join(rel);
-            if abs.is_file() {
+            if abs.is_file() && !is_hidden_vault_file(&abs, vault) {
                 let dates = git_dates
                     .get(rel.as_str())
                     .map(|d| (d.modified_at, d.created_at));
@@ -547,7 +548,10 @@ fn migrate_legacy_cache(vault: &Path) {
 fn prune_stale_entries(vault: &Path, entries: &mut Vec<VaultEntry>) -> bool {
     let before = entries.len();
     // Remove entries whose files no longer exist on disk
-    entries.retain(|e| std::path::Path::new(&e.path).is_file());
+    entries.retain(|e| {
+        let path = std::path::Path::new(&e.path);
+        path.is_file() && !is_hidden_vault_file(path, vault)
+    });
     // Deduplicate by case-folded relative path
     let mut seen = std::collections::HashSet::new();
     entries.retain(|e| {

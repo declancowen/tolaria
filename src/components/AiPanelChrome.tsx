@@ -507,10 +507,10 @@ export function AiPanelComposer({
   return (
     <div
       className="flex shrink-0 flex-col"
-      style={{ padding: '6px 10px' }}
+      style={{ padding: '6px 16px' }}
     >
       <div className={cn(
-        hasControls ? 'rounded-xl border border-border bg-background px-2 py-1.5 shadow-xs' : 'flex items-end gap-2',
+        hasControls ? 'rounded-xl border border-border bg-background px-3 py-1.5 shadow-xs' : 'flex items-end gap-2',
       )}>
         <div className={cn('min-w-0 flex-1', hasControls && 'w-full')}>
           <ComposerInput

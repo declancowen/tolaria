@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { CaretDown, GearSix } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import {
@@ -86,6 +86,7 @@ interface AiWorkspaceProps {
   mode?: 'docked' | 'side' | 'window'
   noteList?: NoteListItem[]
   noteListFilter?: { type: string | null; query: string }
+  panelTabs?: ReactNode
   onActiveConversationChange?: (id: string) => void
   onActiveTargetChange?: (target: AiTarget) => void
   onClose: () => void
@@ -741,6 +742,7 @@ function SideAiWorkspaceLayout({
           onReorder={model.reorderConversation}
           onSelect={model.setActiveId}
           onToggleExpanded={() => setExpanded((current) => !current)}
+          panelTabs={workspace.panelTabs}
           separated={headerSeparated}
           statuses={model.statuses}
         />

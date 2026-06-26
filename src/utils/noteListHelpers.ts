@@ -124,6 +124,13 @@ export function sortByModified(a: VaultEntry, b: VaultEntry): number {
 
 export type SortOption = 'modified' | 'created' | 'title' | 'status' | `property:${string}`
 export type SortDirection = 'asc' | 'desc'
+export type GroupByOption = 'none' | 'type' | 'status' | 'author' | `property:${string}`
+
+export interface NoteListDocumentGroup {
+  key: string
+  label: string
+  entries: VaultEntry[]
+}
 
 export interface SortConfig {
   option: SortOption
@@ -157,6 +164,72 @@ export function extractSortableProperties(entries: VaultEntry[]): string[] {
     for (const key of Object.keys(entry.properties)) keys.add(key)
   }
   return [...keys].sort((a, b) => a.localeCompare(b))
+}
+
+export function extractGroupableProperties(entries: VaultEntry[]): string[] {
+  return extractSortableProperties(entries)
+}
+
+function normalizePropertyKey(key: string): string {
+  return key.trim().toLowerCase()
+}
+
+function propertyValueForKey(entry: VaultEntry, key: string): unknown {
+  if (Object.prototype.hasOwnProperty.call(entry.properties, key)) return Reflect.get(entry.properties, key)
+
+  const normalizedKey = normalizePropertyKey(key)
+  const matchingKey = Object.keys(entry.properties).find((candidate) => normalizePropertyKey(candidate) === normalizedKey)
+  return matchingKey ? Reflect.get(entry.properties, matchingKey) : null
+}
+
+function authorValueForEntry(entry: VaultEntry): unknown {
+  return propertyValueForKey(entry, 'Author')
+    ?? propertyValueForKey(entry, 'author')
+    ?? propertyValueForKey(entry, 'Owner')
+    ?? propertyValueForKey(entry, 'owner')
+}
+
+function groupValueLabel(value: unknown): string {
+  if (Array.isArray(value)) return value.map(String).map((item) => item.trim()).filter(Boolean).join(', ')
+  if (typeof value === 'string') return value.trim()
+  if (value === null || value === undefined) return ''
+  return String(value)
+}
+
+function typeGroupLabel(entry: VaultEntry): string {
+  if (entry.isA) return entry.isA
+  if (entry.fileKind === 'markdown' || !entry.fileKind) return 'Note'
+  return entry.fileKind
+}
+
+function groupLabelForEntry(entry: VaultEntry, option: GroupByOption): string {
+  if (option === 'none') return ''
+  if (option === 'type') return typeGroupLabel(entry)
+  if (option === 'status') return groupValueLabel(entry.status)
+  if (option === 'author') return groupValueLabel(authorValueForEntry(entry))
+  return groupValueLabel(propertyValueForKey(entry, option.slice('property:'.length)))
+}
+
+export function groupEntriesByOption(entries: VaultEntry[], option: GroupByOption): NoteListDocumentGroup[] {
+  if (option === 'none') return entries.length > 0 ? [{ key: 'none', label: '', entries }] : []
+
+  const groups = new Map<string, NoteListDocumentGroup>()
+  for (const entry of entries) {
+    const label = groupLabelForEntry(entry, option)
+    const key = label ? `${option}:${label}` : `${option}:__empty__`
+    const group = groups.get(key)
+    if (group) {
+      group.entries.push(entry)
+      continue
+    }
+    groups.set(key, { key, label, entries: [entry] })
+  }
+
+  return [...groups.values()].sort((left, right) => {
+    if (!left.label && right.label) return 1
+    if (left.label && !right.label) return -1
+    return 0
+  })
 }
 
 const STATUS_ORDER: Record<string, number> = {
@@ -499,9 +572,24 @@ function pathRelativeToRoot(entryPath: string, rootPath?: string): string | null
   return normalizedEntryPath.slice(normalizedRootPath.length + 1)
 }
 
-function isEntryInSelectedFolder(entryPath: string, folderRelPath: string, rootPath?: string): boolean {
+function directChildPathForFolder(entryPath: string, folderPath: string): string | null {
+  if (entryPath.startsWith(`${folderPath}/`)) {
+    return entryPath.slice(folderPath.length + 1)
+  }
+  const segment = `/${folderPath}/`
+  const segmentIndex = entryPath.lastIndexOf(segment)
+  if (segmentIndex < 0) return null
+  return entryPath.slice(segmentIndex + segment.length)
+}
+
+function isEntryDirectlyInSelectedFolder(entryPath: string, folderRelPath: string, rootPath?: string): boolean {
   const relativeEntryPath = pathRelativeToRoot(entryPath, rootPath)
-  return relativeEntryPath ? isInFolder(relativeEntryPath, folderRelPath) : false
+  if (!relativeEntryPath) return false
+  const normalizedFolderPath = normalizeFolderPath(folderRelPath)
+  if (!normalizedFolderPath) return !relativeEntryPath.includes('/')
+  const childPath = directChildPathForFolder(relativeEntryPath, normalizedFolderPath)
+  if (childPath === null) return false
+  return childPath.length > 0 && !childPath.includes('/')
 }
 
 function filterRootEntries(entries: VaultEntry[], rootPath: string | undefined, subFilter?: NoteListFilter): VaultEntry[] {
@@ -511,8 +599,8 @@ function filterRootEntries(entries: VaultEntry[], rootPath: string | undefined, 
 
 function filterFolderEntries(entries: VaultEntry[], selection: Extract<SidebarSelection, { kind: 'folder' }>, subFilter?: NoteListFilter): VaultEntry[] {
   if (!selection.path) return filterRootEntries(entries, selection.rootPath, subFilter)
-  // Folder view shows ALL files (text + binary), not just markdown
-  const folderEntries = entries.filter((entry) => isEntryInSelectedFolder(entry.path, selection.path, selection.rootPath))
+  // Folder browsing shows immediate files only; child folders are rendered separately.
+  const folderEntries = entries.filter((entry) => isEntryDirectlyInSelectedFolder(entry.path, selection.path, selection.rootPath))
   return subFilter ? applySubFilter(folderEntries, subFilter) : folderEntries.filter(isActive)
 }
 
@@ -586,6 +674,17 @@ function countEntriesByArchiveStatus(entries: VaultEntry[]): Record<NoteListFilt
 /** Count notes per sub-filter across all entries (no type filter). */
 export function countAllByFilter(entries: VaultEntry[]): Record<NoteListFilter, number> {
   return countEntriesByArchiveStatus(entries.filter(isMarkdown))
+}
+
+/** Count entries per sub-filter for the current folder browser surface. */
+export function countFolderByFilter(
+  entries: VaultEntry[],
+  selection: Extract<SidebarSelection, { kind: 'folder' }>,
+): Record<NoteListFilter, number> {
+  const folderEntries = selection.path
+    ? entries.filter((entry) => isEntryDirectlyInSelectedFolder(entry.path, selection.path, selection.rootPath))
+    : entries.filter((entry) => isDirectRootEntry(entry.path, selection.rootPath))
+  return countEntriesByArchiveStatus(folderEntries)
 }
 
 /** Count All Notes-eligible documents per sub-filter using the current file visibility policy. */

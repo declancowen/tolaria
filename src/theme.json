@@ -50,7 +50,7 @@
   "lists": {
     "bulletSymbol": "•",
     "bulletSize": 24,
-    "bulletColor": "var(--accent-blue)",
+    "bulletColor": "var(--text-primary)",
     "indentSize": 24,
     "itemSpacing": 4,
     "paddingLeft": 8,
@@ -60,7 +60,7 @@
   "checkboxes": {
     "size": 18,
     "borderRadius": 3,
-    "checkedColor": "var(--accent-blue)",
+    "checkedColor": "var(--text-primary)",
     "uncheckedBorderColor": "var(--text-muted)",
     "gap": 8
   },

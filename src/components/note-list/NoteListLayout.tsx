@@ -1,7 +1,7 @@
 import { BulkActionBar } from '../BulkActionBar'
 import { FilterPills } from './FilterPills'
 import { NoteListHeader } from './NoteListHeader'
-import { EntityView, ListView } from './NoteListViews'
+import { BrowserView, EntityView, ListView } from './NoteListViews'
 import type { useNoteListModel } from './useNoteListModel'
 
 type NoteListLayoutProps = ReturnType<typeof useNoteListModel> & {
@@ -91,6 +91,12 @@ function NoteListContent({
   toggleGroup,
   handleSortChange,
   renderItem,
+  displayMode,
+  documentGroups,
+  groupBy,
+  folderChildren,
+  typeEntryMap,
+  handleClickNote,
   isArchivedView,
   isChangesView,
   isInboxView,
@@ -99,6 +105,7 @@ function NoteListContent({
   noteListVirtuosoRef,
   locale,
   loading,
+  onSelectFolder,
 }: Pick<
   NoteListLayoutProps,
   | 'entitySelection'
@@ -109,6 +116,12 @@ function NoteListContent({
   | 'toggleGroup'
   | 'handleSortChange'
   | 'renderItem'
+  | 'displayMode'
+  | 'documentGroups'
+  | 'groupBy'
+  | 'folderChildren'
+  | 'typeEntryMap'
+  | 'handleClickNote'
   | 'isArchivedView'
   | 'isChangesView'
   | 'isInboxView'
@@ -117,7 +130,10 @@ function NoteListContent({
   | 'noteListVirtuosoRef'
   | 'locale'
   | 'loading'
+  | 'onSelectFolder'
 >) {
+  const shouldUseBrowserView = displayMode !== 'list' || groupBy !== 'none' || folderChildren.length > 0
+
   return (
     <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
       {loading ? (
@@ -132,6 +148,24 @@ function NoteListContent({
           onToggleGroup={toggleGroup}
           onSortChange={handleSortChange}
           renderItem={renderItem}
+          locale={locale}
+        />
+      ) : shouldUseBrowserView ? (
+        <BrowserView
+          displayMode={displayMode}
+          documentGroups={documentGroups}
+          folderChildren={folderChildren}
+          groupBy={groupBy}
+          typeEntryMap={typeEntryMap}
+          isArchivedView={isArchivedView}
+          isChangesView={isChangesView}
+          isInboxView={isInboxView}
+          changesError={modifiedFilesError}
+          searched={searched}
+          query={query}
+          renderItem={renderItem}
+          onOpenEntry={handleClickNote}
+          onSelectFolder={onSelectFolder}
           locale={locale}
         />
       ) : (
@@ -166,6 +200,12 @@ function NoteListBody({
   toggleGroup,
   handleSortChange,
   renderItem,
+  displayMode,
+  documentGroups,
+  groupBy,
+  folderChildren,
+  typeEntryMap,
+  handleClickNote,
   isArchivedView,
   isChangesView,
   isInboxView,
@@ -176,6 +216,7 @@ function NoteListBody({
   noteListFilter,
   filterCounts,
   onNoteListFilterChange,
+  onSelectFolder,
   loading,
 }: Pick<
   NoteListLayoutProps,
@@ -193,6 +234,12 @@ function NoteListBody({
   | 'toggleGroup'
   | 'handleSortChange'
   | 'renderItem'
+  | 'displayMode'
+  | 'documentGroups'
+  | 'groupBy'
+  | 'folderChildren'
+  | 'typeEntryMap'
+  | 'handleClickNote'
   | 'isArchivedView'
   | 'isChangesView'
   | 'isInboxView'
@@ -203,6 +250,7 @@ function NoteListBody({
   | 'noteListFilter'
   | 'filterCounts'
   | 'onNoteListFilterChange'
+  | 'onSelectFolder'
   | 'loading'
 >) {
   return (
@@ -228,6 +276,12 @@ function NoteListBody({
         toggleGroup={toggleGroup}
         handleSortChange={handleSortChange}
         renderItem={renderItem}
+        displayMode={displayMode}
+        documentGroups={documentGroups}
+        groupBy={groupBy}
+        folderChildren={folderChildren}
+        typeEntryMap={typeEntryMap}
+        handleClickNote={handleClickNote}
         isArchivedView={isArchivedView}
         isChangesView={isChangesView}
         isInboxView={isInboxView}
@@ -236,6 +290,7 @@ function NoteListBody({
         noteListVirtuosoRef={noteListVirtuosoRef}
         locale={locale}
         loading={loading}
+        onSelectFolder={onSelectFolder}
       />
       {showFilterPills && (
         <FilterPills
@@ -257,6 +312,7 @@ function NoteListLayoutHeader({
   isChangesView,
   listSort,
   listDirection,
+  groupBy,
   customProperties,
   gitRepositories,
   selectedGitRepositoryPath,
@@ -269,6 +325,9 @@ function NoteListLayoutHeader({
   searchInputRef,
   propertyPicker,
   handleSortChange,
+  onGroupByChange,
+  displayMode,
+  onDisplayModeChange,
   handleCreateNote,
   onOpenType,
   toggleSearch,
@@ -282,6 +341,7 @@ function NoteListLayoutHeader({
   | 'isChangesView'
   | 'listSort'
   | 'listDirection'
+  | 'groupBy'
   | 'customProperties'
   | 'gitRepositories'
   | 'selectedGitRepositoryPath'
@@ -294,6 +354,9 @@ function NoteListLayoutHeader({
   | 'searchInputRef'
   | 'propertyPicker'
   | 'handleSortChange'
+  | 'onGroupByChange'
+  | 'displayMode'
+  | 'onDisplayModeChange'
   | 'handleCreateNote'
   | 'onOpenType'
   | 'toggleSearch'
@@ -308,6 +371,7 @@ function NoteListLayoutHeader({
       isChangesView={isChangesView}
       listSort={listSort}
       listDirection={listDirection}
+      groupBy={groupBy}
       customProperties={customProperties}
       gitRepositories={gitRepositories}
       selectedGitRepositoryPath={selectedGitRepositoryPath}
@@ -320,6 +384,9 @@ function NoteListLayoutHeader({
       searchInputRef={searchInputRef}
       propertyPicker={propertyPicker}
       onSortChange={handleSortChange}
+      onGroupByChange={onGroupByChange}
+      displayMode={displayMode}
+      onDisplayModeChange={onDisplayModeChange}
       onCreateNote={handleCreateNote}
       onOpenType={onOpenType}
       onToggleSearch={toggleSearch}

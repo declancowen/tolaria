@@ -240,6 +240,8 @@ pub fn reload_entry(path: &Path) -> Result<VaultEntry, String> {
 const HIDDEN_DIRS: &[&str] = &[".git", ".laputa", ".DS_Store"];
 /// Keep type definitions in their dedicated sidebar section instead of the generic folder tree.
 const FOLDER_TREE_EXCLUDED_DIRS: &[&str] = &["type"];
+/// Root-level AI/tooling guidance files stay on disk, but are not user notes.
+const HIDDEN_ROOT_FILES: &[&str] = &["AGENTS.md", "CLAUDE.md", "GEMINI.md"];
 
 fn is_hidden_dir(name: &str) -> bool {
     name.starts_with('.') || HIDDEN_DIRS.contains(&name)
@@ -247,6 +249,23 @@ fn is_hidden_dir(name: &str) -> bool {
 
 fn is_folder_tree_hidden_dir(name: &str) -> bool {
     is_hidden_dir(name) || FOLDER_TREE_EXCLUDED_DIRS.contains(&name)
+}
+
+pub(crate) fn is_hidden_vault_file(path: &Path, vault_root: &Path) -> bool {
+    let Some(filename) = path.file_name().and_then(|name| name.to_str()) else {
+        return false;
+    };
+    if filename.starts_with('.') {
+        return true;
+    }
+
+    let Ok(parent) = path.parent().unwrap_or(vault_root).canonicalize() else {
+        return false;
+    };
+    let Ok(root) = vault_root.canonicalize() else {
+        return false;
+    };
+    parent == root && HIDDEN_ROOT_FILES.contains(&filename)
 }
 
 pub(crate) fn is_md_file(path: &Path) -> bool {
@@ -414,9 +433,7 @@ fn scan_all_files(
         });
     for entry in walker.filter_map(|e| e.ok()) {
         if entry.path().is_file() {
-            // Skip hidden files (starting with '.') — e.g. .gitignore, .DS_Store
-            let fname = entry.file_name().to_string_lossy();
-            if fname.starts_with('.') {
+            if is_hidden_vault_file(entry.path(), vault_path) {
                 continue;
             }
             try_parse_file(entry.path(), vault_path, git_dates, entries);

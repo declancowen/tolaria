@@ -22,6 +22,14 @@
   flex-direction: column;
 }
 
+.sidebar-title-bar {
+  padding: 0 16px;
+}
+
+body.mac-chrome .sidebar-title-bar {
+  padding-left: 90px;
+}
+
 .app__sidebar > * {
   flex: 1;
 }
@@ -38,6 +46,11 @@
   position: relative;
   z-index: 20;
   background: var(--surface-sidebar);
+}
+
+.app__note-list--browser {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .app__note-list > * {
@@ -58,6 +71,10 @@
 
 .app__editor > * {
   flex: 1;
+}
+
+.browser-view-grid-item:has([data-browser-view-grid-heading='true']) {
+  grid-column: 1 / -1;
 }
 
 @keyframes spin {

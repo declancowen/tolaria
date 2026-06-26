@@ -17,11 +17,13 @@ describe('useAppNavigation', () => {
   function renderNav(overrides: {
     entries?: VaultEntry[]
     activeTabPath?: string | null
+    activeSurfaceKey?: string | null
   } = {}) {
     const entries = overrides.entries ?? [makeEntry('/a.md'), makeEntry('/b.md'), makeEntry('/c.md')]
     const activeTabPath = overrides.activeTabPath ?? null
+    const activeSurfaceKey = overrides.activeSurfaceKey ?? null
     return renderHook(() =>
-      useAppNavigation({ entries, activeTabPath, onSelectNote }),
+      useAppNavigation({ entries, activeTabPath, activeSurfaceKey, onSelectNote }),
     )
   }
 
@@ -94,6 +96,38 @@ describe('useAppNavigation', () => {
       act(() => { result.current.handleGoForward() })
 
       expect(onSelectNote).toHaveBeenCalledWith(entries[1])
+    })
+
+    it('navigates back from a document to the previous browser surface', () => {
+      const entries = [makeEntry('/a.md')]
+      const onSelectSurface = vi.fn()
+      const { result, rerender } = renderHook(
+        ({ activeSurfaceKey, activeTabPath }) =>
+          useAppNavigation({ entries, activeSurfaceKey, activeTabPath, onSelectNote, onSelectSurface }),
+        { initialProps: { activeSurfaceKey: 'filter:inbox' as string | null, activeTabPath: null as string | null } },
+      )
+
+      rerender({ activeSurfaceKey: null, activeTabPath: '/a.md' })
+
+      act(() => { result.current.handleGoBack() })
+
+      expect(onSelectSurface).toHaveBeenCalledWith('filter:inbox')
+    })
+
+    it('navigates forward from a browser surface to the previously opened document', () => {
+      const entries = [makeEntry('/a.md')]
+      const onSelectSurface = vi.fn()
+      const { result, rerender } = renderHook(
+        ({ activeSurfaceKey, activeTabPath }) =>
+          useAppNavigation({ entries, activeSurfaceKey, activeTabPath, onSelectNote, onSelectSurface }),
+        { initialProps: { activeSurfaceKey: 'filter:inbox' as string | null, activeTabPath: null as string | null } },
+      )
+
+      rerender({ activeSurfaceKey: null, activeTabPath: '/a.md' })
+      act(() => { result.current.handleGoBack() })
+      act(() => { result.current.handleGoForward() })
+
+      expect(onSelectNote).toHaveBeenCalledWith(entries[0])
     })
   })
 })

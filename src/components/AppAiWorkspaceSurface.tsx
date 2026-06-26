@@ -1,4 +1,5 @@
 import type { AiAgentId, AiAgentReadiness, AiAgentsStatus } from '../lib/aiAgents'
+import type { ReactNode } from 'react'
 import type { AiModelProvider, AiTarget } from '../lib/aiTargets'
 import type { AppLocale } from '../lib/i18n'
 import type { NoteListItem } from '../utils/ai-context'
@@ -23,6 +24,7 @@ interface AppAiWorkspaceSurfaceProps {
   mode: 'docked' | 'side' | 'window'
   noteList: NoteListItem[]
   noteListFilter: { type: string | null; query: string }
+  panelTabs?: ReactNode
   onActiveConversationChange?: (id: string) => void
   onActiveTargetChange?: (target: AiTarget) => void
   onClose: () => void
@@ -60,6 +62,7 @@ export function AppAiWorkspaceSurface({
   mode,
   noteList,
   noteListFilter,
+  panelTabs,
   onActiveConversationChange,
   onActiveTargetChange,
   onClose,
@@ -98,6 +101,7 @@ export function AppAiWorkspaceSurface({
       openTabs={openTabs}
       noteList={noteList}
       noteListFilter={noteListFilter}
+      panelTabs={panelTabs}
       onActiveConversationChange={onActiveConversationChange}
       onActiveTargetChange={onActiveTargetChange}
       onClose={onClose}

@@ -18,7 +18,7 @@ import {
 } from './hooks/appCommandCatalog'
 import { isRecoverableBlockNoteRenderError } from './components/blockNoteRenderRecovery'
 import { isRecoveredActionTooltipError } from './components/ui/actionTooltipRecovery'
-import { isMac, shouldUseCustomWindowChrome } from './utils/platform'
+import { shouldUseCustomWindowChrome, shouldUseMacTrafficLightChrome } from './utils/platform'
 import { reloadFrontendOnceIfStartupFailed } from './utils/frontendReady'
 
 const TLDRAW_CONTEXT_MENU_SELECTOR = '.tldraw-whiteboard'
@@ -64,7 +64,7 @@ if (shouldUseCustomWindowChrome()) {
   document.body.classList.add('custom-window-chrome')
 }
 
-if (isMac()) {
+if (shouldUseMacTrafficLightChrome()) {
   document.body.classList.add('mac-chrome')
 }
 

@@ -57,6 +57,8 @@ export interface EditorContentProps {
   onRenameFilename?: (path: string, newFilenameStem: string) => void
   noteWidth?: NoteWidthMode
   onToggleNoteWidth?: () => void
+  leftPanelsCollapsed?: boolean
+  onExpandLeftPanels?: () => void
   isConflicted?: boolean
   onKeepMine?: (path: string) => void
   onKeepTheirs?: (path: string) => void

@@ -217,9 +217,11 @@ describe('AiWorkspace', () => {
     expect(workspace).toHaveStyle({ width: '320px', minWidth: '320px' })
     const header = screen.getByTestId('ai-workspace-side-header')
     const tabStrip = screen.getByTestId('ai-workspace-side-tabs')
-    expect(header).not.toHaveClass('border-b')
+    expect(header).toHaveClass('border-b')
+    expect(header).not.toHaveAttribute('data-separated')
     fireEvent.click(screen.getByRole('button', { name: 'Mock history scroll' }))
     expect(header).toHaveClass('border-b')
+    expect(header).toHaveAttribute('data-separated', 'true')
     expect(tabStrip).toHaveClass('overflow-x-auto')
     expect(screen.getByRole('button', { name: 'AI Chat' })).toBeTruthy()
     expect(

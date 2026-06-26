@@ -38,16 +38,14 @@ function makeBookTypeEntries(
 
 const noop = () => undefined
 const NOTE_LIST_SEARCH_SETTLE_TIMEOUT_MS = 3_000
-const MAC_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 Safari/605.1.15'
-const WINDOWS_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36'
 
-function withUserAgent<T>(userAgent: string, callback: () => T): T {
-  const originalUserAgent = navigator.userAgent
-  Object.defineProperty(window.navigator, 'userAgent', { value: userAgent, configurable: true })
+function withMacChromeClass<T>(callback: () => T): T {
+  const hadMacChromeClass = document.body.classList.contains('mac-chrome')
+  document.body.classList.add('mac-chrome')
   try {
     return callback()
   } finally {
-    Object.defineProperty(window.navigator, 'userAgent', { value: originalUserAgent, configurable: true })
+    if (!hadMacChromeClass) document.body.classList.remove('mac-chrome')
   }
 }
 
@@ -541,7 +539,7 @@ describe('NoteList rendering', () => {
     expect(screen.getByTitle('Create new note')).toBeInTheDocument()
   })
 
-  it('uses breadcrumbs-like button styling for note-list header actions', () => {
+  it('uses the shared 24px icon button styling for note-list header actions', () => {
     renderBookNoteList({
       entryOverrides: { properties: { Priority: 'High' } },
       selection: { kind: 'filter', filter: 'inbox' },
@@ -557,14 +555,15 @@ describe('NoteList rendering', () => {
     for (const button of buttons) {
       expect(button).toHaveAttribute('data-variant', 'ghost')
       expect(button).toHaveClass(
-        '!h-auto',
-        '!w-auto',
+        '!h-6',
+        '!w-6',
         '!min-w-0',
-        '!rounded-none',
+        '!rounded-md',
         '!p-0',
         '!text-muted-foreground',
-        'hover:!bg-transparent',
+        'hover:!bg-accent',
         'hover:!text-foreground',
+        '[&_svg]:!size-[16.5px]',
       )
       expect(button).not.toHaveAttribute('tabindex', '-1')
     }
@@ -1108,24 +1107,22 @@ describe('NoteList type sections', () => {
 })
 
 describe('NoteList traffic-light padding', () => {
-  it('adds left padding for macOS traffic lights when the sidebar is collapsed', () => {
-    withUserAgent(MAC_USER_AGENT, () => {
+  it('adds left padding for native macOS traffic lights when the sidebar is collapsed', () => {
+    withMacChromeClass(() => {
       const { container } = renderNoteList({ sidebarCollapsed: true })
       const header = container.querySelector('.h-\\[52px\\]') as HTMLElement
       expect(header.style.paddingLeft).toBe('90px')
     })
   })
 
-  it('does not add macOS traffic-light padding on Windows when the sidebar is collapsed', () => {
-    withUserAgent(WINDOWS_USER_AGENT, () => {
-      const { container } = renderNoteList({ sidebarCollapsed: true })
-      const header = container.querySelector('.h-\\[52px\\]') as HTMLElement
-      expect(header.style.paddingLeft).toBe('')
-    })
+  it('does not add native macOS traffic-light padding without the mac chrome class', () => {
+    const { container } = renderNoteList({ sidebarCollapsed: true })
+    const header = container.querySelector('.h-\\[52px\\]') as HTMLElement
+    expect(header.style.paddingLeft).toBe('')
   })
 
   it('does not add extra left padding when the sidebar is expanded', () => {
-    withUserAgent(MAC_USER_AGENT, () => {
+    withMacChromeClass(() => {
       const { container } = renderNoteList({ sidebarCollapsed: false })
       const header = container.querySelector('.h-\\[52px\\]') as HTMLElement
       expect(header.style.paddingLeft).toBe('')

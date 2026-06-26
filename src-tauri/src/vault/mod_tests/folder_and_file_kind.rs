@@ -57,6 +57,28 @@ fn test_scan_vault_folders_flat_vault() {
 }
 
 #[test]
+fn test_scan_vault_hides_root_ai_guidance_files() {
+    let dir = TempDir::new().unwrap();
+    create_test_file(dir.path(), "AGENTS.md", "# Agent guidance\n");
+    create_test_file(dir.path(), "CLAUDE.md", "# Claude guidance\n");
+    create_test_file(dir.path(), "projects/AGENTS.md", "# Project agent guidance\n");
+    create_test_file(dir.path(), "note.md", "# Note\n");
+
+    let entries = scan_vault(dir.path(), &std::collections::HashMap::new()).unwrap();
+    let paths: Vec<String> = entries
+        .iter()
+        .map(|entry| {
+            path_identity::vault_relative_path_string(dir.path(), Path::new(&entry.path)).unwrap()
+        })
+        .collect();
+
+    assert!(!paths.contains(&"AGENTS.md".to_string()));
+    assert!(!paths.contains(&"CLAUDE.md".to_string()));
+    assert!(paths.contains(&"projects/AGENTS.md".to_string()));
+    assert!(paths.contains(&"note.md".to_string()));
+}
+
+#[test]
 fn test_list_properties_display_values_and_non_leakage() {
     let dir = TempDir::new().unwrap();
     let content =

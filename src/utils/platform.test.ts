@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { isTauri } from '../mock-tauri'
-import { isLinux, isMac, isWindows, shouldUseCustomWindowChrome } from './platform'
+import { isLinux, isMac, isWindows, shouldUseCustomWindowChrome, shouldUseMacTrafficLightChrome } from './platform'
 
 vi.mock('../mock-tauri', () => ({
   isTauri: vi.fn(),
@@ -55,5 +55,17 @@ describe('platform helpers', () => {
 
     setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
     expect(shouldUseCustomWindowChrome()).toBe(false)
+  })
+
+  it('reserves macOS traffic-light space only inside Tauri', () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
+    vi.mocked(isTauri).mockReturnValue(false)
+    expect(shouldUseMacTrafficLightChrome()).toBe(false)
+
+    vi.mocked(isTauri).mockReturnValue(true)
+    expect(shouldUseMacTrafficLightChrome()).toBe(true)
+
+    setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
+    expect(shouldUseMacTrafficLightChrome()).toBe(false)
   })
 })

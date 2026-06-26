@@ -22,6 +22,16 @@
   opacity: 0.55;
 }
 
+.editor-right-panel__ai-workspace [data-testid="ai-workspace"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  border-left: 0;
+}
+
+.editor-right-panel__ai-workspace [data-testid="ai-workspace-left-resize"] {
+  display: none;
+}
+
 /* Breadcrumb bar: border can still react to the data attribute, but the
    breadcrumb filename/title stays visible at all times. */
 .breadcrumb-bar {
@@ -40,18 +50,6 @@ body.mac-chrome .app:not(:has(.app__sidebar)):not(:has(.app__note-list)) .breadc
 
 .breadcrumb-bar__title {
   display: flex;
-}
-
-.breadcrumb-bar__actions [data-slot='button'] {
-  width: auto;
-  height: auto;
-  min-width: 0;
-  padding: 0;
-  border-radius: 0;
-}
-
-.breadcrumb-bar__actions [data-slot='button']:hover {
-  background: transparent;
 }
 
 .breadcrumb-bar__overflow-menu {

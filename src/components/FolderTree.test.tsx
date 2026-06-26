@@ -65,7 +65,7 @@ describe('FolderTree', () => {
     expect(screen.getByText('journal')).toBeInTheDocument()
   })
 
-  it('renders the vault root as the top-level folder when a vault path is available', () => {
+  it('hides the vault root when a vault path is available', () => {
     render(
       <FolderTree
         folders={mockFolders}
@@ -75,24 +75,27 @@ describe('FolderTree', () => {
       />,
     )
 
-    expect(screen.getByText('Laputa')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Laputa' })).toBeInTheDocument()
+    expect(screen.queryByText('Laputa')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Laputa' })).not.toBeInTheDocument()
     expect(screen.getByText('projects')).toBeInTheDocument()
     expect(screen.getByText('areas')).toBeInTheDocument()
     expect(screen.getByText('journal')).toBeInTheDocument()
   })
 
-  it('renders the vault root even when the vault has no subfolders', () => {
+  it('keeps the create affordance available when the hidden root has no subfolders', () => {
     render(
       <FolderTree
         folders={[]}
         selection={defaultSelection}
         onSelect={vi.fn()}
+        onCreateFolder={vi.fn()}
         vaultRootPath={vaultRootPath}
       />,
     )
 
-    expect(screen.getByText('Laputa')).toBeInTheDocument()
+    expect(screen.queryByText('Laputa')).not.toBeInTheDocument()
+    expect(screen.getByText('FOLDERS')).toBeInTheDocument()
+    expect(screen.getByTestId('create-folder-btn')).toBeInTheDocument()
   })
 
   it('renders one scoped root per mounted workspace and selects folders inside that root', () => {
@@ -134,8 +137,7 @@ describe('FolderTree', () => {
     })
   })
 
-  it('lets the vault root collapse and expand from the row', () => {
-    vi.useFakeTimers()
+  it('does not render the hidden vault root as a collapsible row', () => {
     render(
       <FolderTree
         folders={mockFolders}
@@ -145,18 +147,8 @@ describe('FolderTree', () => {
       />,
     )
 
-    fireEvent.click(screen.getByTestId('folder-row:'))
-    act(() => {
-      vi.advanceTimersByTime(FOLDER_ROW_SINGLE_CLICK_DELAY_MS)
-    })
-    expect(screen.queryByText('projects')).not.toBeInTheDocument()
-
-    fireEvent.click(screen.getByTestId('folder-row:'))
-    act(() => {
-      vi.advanceTimersByTime(FOLDER_ROW_SINGLE_CLICK_DELAY_MS)
-    })
+    expect(screen.queryByTestId('folder-row:')).not.toBeInTheDocument()
     expect(screen.getByText('projects')).toBeInTheDocument()
-    vi.useRealTimers()
   })
 
   it('expands children when clicking a folder row', () => {
@@ -179,11 +171,11 @@ describe('FolderTree', () => {
     expect(onSelect).toHaveBeenCalledWith({ kind: 'folder', path: 'projects' })
   })
 
-  it('selects the vault root with the root path attached', () => {
+  it('does not select the hidden vault root', () => {
     const { onSelect } = renderTree({ vaultRootPath })
 
-    clickFolderRow('')
-    expect(onSelect).toHaveBeenCalledWith({ kind: 'folder', path: '', rootPath: vaultRootPath })
+    expect(screen.queryByTestId('folder-row:')).not.toBeInTheDocument()
+    expect(onSelect).not.toHaveBeenCalled()
   })
 
   it('selects child folders with the vault root path attached when the tree has a root', () => {
@@ -410,9 +402,10 @@ describe('FolderTree', () => {
       />,
     )
 
-    expect(screen.getByTestId('folder-row:').parentElement).toHaveStyle({ paddingLeft: '0px' })
-    expect(screen.getByTestId('folder-row:projects').parentElement).toHaveStyle({ paddingLeft: `${FOLDER_ROW_NESTING_INDENT}px` })
-    expect(screen.getByTestId('folder-connector:')).toHaveStyle({ left: `${getFolderConnectorLeft(0)}px` })
+    fireEvent.click(screen.getByTestId('folder-row:projects'))
+    expect(screen.getByTestId('folder-row:projects').parentElement).toHaveStyle({ paddingLeft: '0px' })
+    expect(screen.getByTestId('folder-row:projects/laputa').parentElement).toHaveStyle({ paddingLeft: `${FOLDER_ROW_NESTING_INDENT}px` })
+    expect(screen.getByTestId('folder-connector:projects')).toHaveStyle({ left: `${getFolderConnectorLeft(0)}px` })
   })
 
   it('shows the rename input when a folder is being renamed', () => {
@@ -625,7 +618,7 @@ describe('FolderTree', () => {
     window.removeEventListener(CREATE_NOTE_IN_FOLDER_EVENT, onCreateNoteInFolder)
   })
 
-  it('keeps destructive folder actions off the vault root row and menu', () => {
+  it('does not expose a row or context menu target for the hidden vault root', () => {
     render(
       <FolderTree
         folders={mockFolders}
@@ -643,14 +636,9 @@ describe('FolderTree', () => {
       />,
     )
 
+    expect(screen.queryByText('Laputa')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('folder-row:')).not.toBeInTheDocument()
     expect(screen.queryByTestId('rename-folder-btn:')).not.toBeInTheDocument()
     expect(screen.queryByTestId('delete-folder-btn:')).not.toBeInTheDocument()
-
-    fireEvent.contextMenu(screen.getByText('Laputa'))
-
-    expect(screen.getByTestId('reveal-folder-menu-item')).toBeInTheDocument()
-    expect(screen.getByTestId('copy-folder-path-menu-item')).toBeInTheDocument()
-    expect(screen.queryByText('Rename folder...')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('delete-folder-menu-item')).not.toBeInTheDocument()
   })
 })

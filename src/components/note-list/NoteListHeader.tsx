@@ -1,24 +1,47 @@
-import { CircleNotch as Loader2, MagnifyingGlass, Plus, SidebarSimple, X } from '@phosphor-icons/react'
+import { CircleNotch as Loader2, Kanban, ListBullets, ListChecks, MagnifyingGlass, Plus, SidebarSimple, X } from '@phosphor-icons/react'
 import type { VaultEntry } from '../../types'
-import type { SortOption, SortDirection } from '../../utils/noteListHelpers'
+import type { GroupByOption, SortOption, SortDirection } from '../../utils/noteListHelpers'
 import { translate, type AppLocale, type TranslationKey } from '../../lib/i18n'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+  TOOLBAR_ICON_BUTTON_ACCENT_IMPORTANT_CLASSNAME,
+  TOOLBAR_ICON_BUTTON_ACCENT_OPEN_IMPORTANT_CLASSNAME,
+  TOOLBAR_ICON_SIZE,
+} from '@/components/ui/toolbarIconButton'
+import { cn } from '@/lib/utils'
 import { APP_COMMAND_EVENT_NAME, APP_COMMAND_IDS } from '../../hooks/appCommandDispatcher'
 import { trackEvent } from '../../lib/telemetry'
 import { useDragRegion } from '../../hooks/useDragRegion'
 import { SortDropdown } from '../SortDropdown'
+import { GroupByDropdown } from './GroupByDropdown'
 import { ListPropertiesPopover, type ListPropertiesPopoverProps } from './ListPropertiesPopover'
 import { GitRepositorySelect } from '../GitRepositorySelect'
 import type { GitRepositoryOption } from '../../utils/gitRepositories'
-import { isMac, MACOS_TRAFFIC_LIGHT_SAFE_PADDING } from '../../utils/platform'
+import { MACOS_TRAFFIC_LIGHT_SAFE_PADDING } from '../../utils/platform'
+import { NOTE_LIST_DISPLAY_MODES, type NoteListDisplayMode } from './noteListDisplayMode'
 
-const NOTE_LIST_ACTION_BUTTON_CLASSNAME = '!h-auto !w-auto !min-w-0 !rounded-none !p-0 !text-muted-foreground hover:!bg-transparent hover:!text-foreground focus-visible:!bg-transparent data-[state=open]:!bg-transparent data-[state=open]:!text-foreground [&_svg]:!size-4'
-const NOTE_LIST_EXPAND_BUTTON_CLASSNAME = '!h-6 !w-6 !min-w-0 !rounded !p-0 !text-muted-foreground hover:!bg-accent hover:!text-foreground focus-visible:!bg-accent [&_svg]:!size-4'
+const NOTE_LIST_ACTION_BUTTON_CLASSNAME = TOOLBAR_ICON_BUTTON_ACCENT_OPEN_IMPORTANT_CLASSNAME
+const NOTE_LIST_EXPAND_BUTTON_CLASSNAME = TOOLBAR_ICON_BUTTON_ACCENT_IMPORTANT_CLASSNAME
+const DISPLAY_MODE_BUTTON_CLASSNAME = TOOLBAR_ICON_BUTTON_ACCENT_IMPORTANT_CLASSNAME
 const PROPERTY_TRIGGER_TITLE_KEYS: Record<string, TranslationKey> = {
   'Customize columns': 'noteList.properties.customizeColumns',
   'Customize All Notes columns': 'noteList.properties.customizeAllColumns',
   'Customize Inbox columns': 'noteList.properties.customizeInboxColumns',
+}
+const DISPLAY_MODE_LABEL_KEYS: Record<NoteListDisplayMode, TranslationKey> = {
+  list: 'noteList.displayMode.list',
+  rows: 'noteList.displayMode.rows',
+  cards: 'noteList.displayMode.cards',
+}
+const DISPLAY_MODE_ICONS = {
+  list: ListBullets,
+  rows: ListChecks,
+  cards: Kanban,
+} as const
+
+function hasNativeMacChrome(): boolean {
+  return typeof document !== 'undefined' && document.body.classList.contains('mac-chrome')
 }
 
 const localizePropertiesTriggerTitle = (triggerTitle: string, locale: AppLocale): string => {
@@ -40,23 +63,66 @@ interface NoteListHeaderProps {
   isChangesView?: boolean
   listSort: SortOption
   listDirection: SortDirection
+  groupBy: GroupByOption
   customProperties: string[]
   sidebarCollapsed?: boolean
   searchVisible: boolean
   search: string
   isSearching: boolean
+  displayMode: NoteListDisplayMode
   searchInputRef: React.RefObject<HTMLInputElement | null>
   propertyPicker?: ListPropertiesPopoverProps | null
   gitRepositories?: GitRepositoryOption[]
   selectedGitRepositoryPath?: string
   locale?: AppLocale
   onSortChange: (groupLabel: string, option: SortOption, direction: SortDirection) => void
+  onGroupByChange: (option: GroupByOption) => void
+  onDisplayModeChange: (mode: NoteListDisplayMode) => void
   onCreateNote: () => void
   onOpenType: (entry: VaultEntry) => void
   onToggleSearch: () => void
   onSearchChange: (value: string) => void
   onSearchKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
   onGitRepositoryChange?: (path: string) => void
+}
+
+function DisplayModeSwitcher({
+  displayMode,
+  locale,
+  onDisplayModeChange,
+}: Pick<NoteListHeaderProps, 'displayMode' | 'locale' | 'onDisplayModeChange'> & {
+  locale: AppLocale
+}) {
+  return (
+    <div
+      className="flex items-center gap-0.5 rounded-md border border-border bg-background p-0.5"
+      role="group"
+      aria-label={translate(locale, 'noteList.displayMode.label')}
+    >
+      {NOTE_LIST_DISPLAY_MODES.map((mode) => {
+        const Icon = DISPLAY_MODE_ICONS[mode]
+        const label = translate(locale, DISPLAY_MODE_LABEL_KEYS[mode])
+        return (
+          <Button
+            key={mode}
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className={cn(
+              DISPLAY_MODE_BUTTON_CLASSNAME,
+              displayMode === mode && '!bg-muted !text-foreground',
+            )}
+            onClick={() => onDisplayModeChange(mode)}
+            title={label}
+            aria-label={label}
+            aria-pressed={displayMode === mode}
+          >
+            <Icon size={TOOLBAR_ICON_SIZE} />
+          </Button>
+        )
+      })}
+    </div>
+  )
 }
 
 function dispatchExpandSidebarFromHeader() {
@@ -80,7 +146,7 @@ function ExpandSidebarButton({ locale }: { locale: AppLocale }) {
       aria-label={expandSidebarLabel}
       data-no-drag
     >
-      <SidebarSimple size={16} weight="regular" />
+      <SidebarSimple size={TOOLBAR_ICON_SIZE} weight="regular" />
     </Button>
   )
 }
@@ -164,10 +230,14 @@ function HeaderActions({
   isEntityView,
   listSort,
   listDirection,
+  groupBy,
   customProperties,
   propertyPicker,
+  displayMode,
   locale,
   onSortChange,
+  onGroupByChange,
+  onDisplayModeChange,
   onCreateNote,
   onToggleSearch,
 }: Pick<
@@ -175,10 +245,14 @@ function HeaderActions({
   | 'isEntityView'
   | 'listSort'
   | 'listDirection'
+  | 'groupBy'
   | 'customProperties'
   | 'propertyPicker'
+  | 'displayMode'
   | 'locale'
   | 'onSortChange'
+  | 'onGroupByChange'
+  | 'onDisplayModeChange'
   | 'onCreateNote'
   | 'onToggleSearch'
 > & {
@@ -187,8 +261,10 @@ function HeaderActions({
   return (
     <div className="ml-3 flex shrink-0 items-center justify-end gap-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
       {!isEntityView && <SortDropdown groupLabel="__list__" current={listSort} direction={listDirection} customProperties={customProperties} locale={locale} onChange={onSortChange} />}
+      {!isEntityView && <GroupByDropdown current={groupBy} customProperties={customProperties} locale={locale} onChange={onGroupByChange} />}
+      {!isEntityView && <DisplayModeSwitcher displayMode={displayMode} locale={locale} onDisplayModeChange={onDisplayModeChange} />}
       <Button type="button" variant="ghost" size="icon-xs" className={NOTE_LIST_ACTION_BUTTON_CLASSNAME} onClick={onToggleSearch} title={translate(locale, 'noteList.searchAction')} aria-label={translate(locale, 'noteList.searchAction')}>
-        <MagnifyingGlass size={16} />
+        <MagnifyingGlass size={TOOLBAR_ICON_SIZE} />
       </Button>
       {propertyPicker && (
         <ListPropertiesPopover
@@ -199,7 +275,7 @@ function HeaderActions({
         />
       )}
       <Button type="button" variant="ghost" size="icon-xs" className={NOTE_LIST_ACTION_BUTTON_CLASSNAME} onClick={onCreateNote} title={translate(locale, 'noteList.createNote')} aria-label={translate(locale, 'noteList.createNote')}>
-        <Plus size={16} />
+        <Plus size={TOOLBAR_ICON_SIZE} />
       </Button>
     </div>
   )
@@ -282,17 +358,21 @@ export function NoteListHeader({
   isChangesView = false,
   listSort,
   listDirection,
+  groupBy,
   customProperties,
   sidebarCollapsed,
   searchVisible,
   search,
   isSearching,
+  displayMode,
   searchInputRef,
   propertyPicker,
   gitRepositories = [],
   selectedGitRepositoryPath = '',
   locale = 'en',
   onSortChange,
+  onGroupByChange,
+  onDisplayModeChange,
   onCreateNote,
   onOpenType,
   onToggleSearch,
@@ -301,7 +381,7 @@ export function NoteListHeader({
   onGitRepositoryChange,
 }: NoteListHeaderProps) {
   const { dragRegionRef } = useDragRegion<HTMLDivElement>()
-  const collapsedSidebarPadding = sidebarCollapsed && isMac()
+  const collapsedSidebarPadding = sidebarCollapsed && hasNativeMacChrome()
     ? MACOS_TRAFFIC_LIGHT_SAFE_PADDING
     : undefined
 
@@ -319,10 +399,14 @@ export function NoteListHeader({
           isEntityView={isEntityView}
           listSort={listSort}
           listDirection={listDirection}
+          groupBy={groupBy}
           customProperties={customProperties}
           propertyPicker={propertyPicker}
+          displayMode={displayMode}
           locale={locale}
           onSortChange={onSortChange}
+          onGroupByChange={onGroupByChange}
+          onDisplayModeChange={onDisplayModeChange}
           onCreateNote={onCreateNote}
           onToggleSearch={onToggleSearch}
         />

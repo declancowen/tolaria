@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { ArrowsInLineHorizontal, ArrowsOutLineHorizontal, Plus, SidebarSimple, X } from '@phosphor-icons/react'
 import {
   DndContext,
@@ -15,6 +15,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Button } from '@/components/ui/button'
+import { TOOLBAR_ICON_BUTTON_CLASSNAME, TOOLBAR_ICON_SIZE } from '@/components/ui/toolbarIconButton'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import type { AgentStatus } from '../hooks/useCliAiAgent'
@@ -63,7 +64,7 @@ function SideWorkspaceTitleEditor({
       }}
       onPointerDown={(event) => event.stopPropagation()}
       aria-label={translate(locale, 'ai.workspace.renameChat')}
-      className="h-9 w-[180px] rounded-lg px-3 text-[13px] font-semibold"
+      className="h-6 w-[180px] rounded-md px-3 text-[13px] font-semibold"
       autoFocus
     />
   )
@@ -118,7 +119,7 @@ function SideWorkspaceTab({
           variant="ghost"
           size="sm"
           className={cn(
-            'h-10 shrink-0 cursor-grab justify-start rounded-lg px-3 text-[13px] font-semibold active:cursor-grabbing',
+            'h-6 shrink-0 cursor-grab justify-start rounded-md px-3 text-[13px] font-semibold active:cursor-grabbing',
             active
               ? 'bg-[var(--state-hover)] text-foreground'
               : 'text-muted-foreground hover:bg-[var(--state-hover)] hover:text-foreground',
@@ -140,7 +141,7 @@ function SideWorkspaceTab({
         <>
           <div
             className={cn(
-              'pointer-events-none absolute inset-y-1 right-0 w-9 rounded-r-lg opacity-0 transition-opacity',
+              'pointer-events-none absolute inset-y-1 right-0 w-8 rounded-r-md opacity-0 transition-opacity',
               active
                 ? 'bg-gradient-to-l from-[var(--state-hover)] via-[var(--state-hover)] to-transparent'
                 : 'bg-gradient-to-l from-sidebar via-sidebar to-transparent group-hover:from-[var(--state-hover)] group-hover:via-[var(--state-hover)]',
@@ -153,7 +154,7 @@ function SideWorkspaceTab({
             variant="ghost"
             size="icon-xs"
             className={cn(
-              'pointer-events-none absolute top-1/2 right-1.5 z-10 h-6 w-6 -translate-y-1/2 rounded-md p-0 opacity-0 shadow-none transition-opacity',
+              'pointer-events-none absolute top-1/2 right-1 z-10 h-5 w-5 -translate-y-1/2 rounded-md p-0 opacity-0 shadow-none transition-opacity',
               'bg-transparent text-foreground hover:bg-transparent hover:text-foreground',
               'group-hover:pointer-events-auto group-hover:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100',
             )}
@@ -165,7 +166,7 @@ function SideWorkspaceTab({
               onClose(conversation.id)
             }}
           >
-            <X size={13} weight="bold" />
+            <X size={12} weight="bold" />
           </Button>
         </>
       )}
@@ -279,13 +280,13 @@ function SideWorkspaceTabs({
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
-              className="shrink-0"
+              size="icon-xs"
+              className={TOOLBAR_ICON_BUTTON_CLASSNAME}
               aria-label={translate(locale, 'ai.workspace.newChat')}
               title={translate(locale, 'ai.workspace.newChat')}
               onClick={onNewChat}
             >
-              <Plus size={17} />
+              <Plus size={TOOLBAR_ICON_SIZE} />
             </Button>
           </div>
         </DndContext>
@@ -318,6 +319,7 @@ export function SideWorkspaceHeader({
   onReorder,
   onSelect,
   onToggleExpanded,
+  panelTabs,
   separated,
   statuses,
 }: {
@@ -332,6 +334,7 @@ export function SideWorkspaceHeader({
   onReorder: (activeId: string, overId: string) => void
   onSelect: (id: string) => void
   onToggleExpanded: () => void
+  panelTabs?: ReactNode
   separated: boolean
   statuses: Record<string, AgentStatus>
 }) {
@@ -339,12 +342,12 @@ export function SideWorkspaceHeader({
 
   return (
     <div
-      className={cn(
-        'flex h-[52px] shrink-0 items-center gap-2 px-2',
-        separated && 'border-b border-border',
-      )}
+      className="flex shrink-0 items-center border-b border-border"
+      style={{ height: 52, padding: '6px 16px', gap: 8 }}
+      data-separated={separated ? 'true' : undefined}
       data-testid="ai-workspace-side-header"
     >
+      {panelTabs}
       <SideWorkspaceTabs
         activeId={activeId}
         conversations={conversations}
@@ -359,22 +362,24 @@ export function SideWorkspaceHeader({
       <Button
         type="button"
         variant="ghost"
-        size="icon-sm"
+        size="icon-xs"
+        className={TOOLBAR_ICON_BUTTON_CLASSNAME}
         aria-label={expandLabel}
         title={expandLabel}
         onClick={onToggleExpanded}
       >
-        {expanded ? <ArrowsInLineHorizontal size={17} /> : <ArrowsOutLineHorizontal size={17} />}
+        {expanded ? <ArrowsInLineHorizontal size={TOOLBAR_ICON_SIZE} /> : <ArrowsOutLineHorizontal size={TOOLBAR_ICON_SIZE} />}
       </Button>
       <Button
         type="button"
         variant="ghost"
-        size="icon-sm"
+        size="icon-xs"
+        className={TOOLBAR_ICON_BUTTON_CLASSNAME}
         aria-label={translate(locale, 'ai.workspace.close')}
         title={translate(locale, 'ai.workspace.close')}
         onClick={onClose}
       >
-        <SidebarSimple size={17} weight="regular" />
+        <SidebarSimple size={TOOLBAR_ICON_SIZE} weight="regular" />
       </Button>
     </div>
   )

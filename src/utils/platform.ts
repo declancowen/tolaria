@@ -24,3 +24,7 @@ export function isWindows(): boolean {
 export function shouldUseCustomWindowChrome(): boolean {
   return isTauri() && (isLinux() || isWindows())
 }
+
+export function shouldUseMacTrafficLightChrome(): boolean {
+  return isTauri() && isMac()
+}

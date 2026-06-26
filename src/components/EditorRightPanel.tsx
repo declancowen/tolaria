@@ -1,8 +1,12 @@
-import { useEffect } from 'react'
+import { cloneElement, isValidElement, useEffect, type ReactElement, type ReactNode } from 'react'
 import type { useCreateBlockNote } from '@blocknote/react'
+import { SlidersHorizontal, Sparkle } from '@phosphor-icons/react'
+import { Button } from '@/components/ui/button'
+import { TOOLBAR_ICON_BUTTON_IMPORTANT_CLASSNAME, TOOLBAR_ICON_SIZE } from '@/components/ui/toolbarIconButton'
+import { cn } from '@/lib/utils'
 import { DEFAULT_AI_AGENT, type AiAgentId, type AiAgentReadiness } from '../lib/aiAgents'
 import type { AiTarget } from '../lib/aiTargets'
-import type { AppLocale } from '../lib/i18n'
+import { translate, type AppLocale } from '../lib/i18n'
 import type { VaultEntry, GitCommit, WorkspaceIdentity } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import { Inspector, type FrontmatterValue } from './Inspector'
@@ -15,6 +19,7 @@ import { TableOfContentsPanel } from './TableOfContentsPanel'
 interface EditorRightPanelProps {
   showAIChat?: boolean
   showTableOfContents?: boolean
+  aiWorkspaceSurface?: ReactNode
   inspectorCollapsed: boolean
   inspectorWidth: number
   editor: ReturnType<typeof useCreateBlockNote>
@@ -33,6 +38,9 @@ interface EditorRightPanelProps {
   noteListFilter?: { type: string | null; query: string }
   onToggleInspector: () => void
   onToggleAIChat?: () => void
+  onSelectInspectorPanel: () => void
+  onSelectAIChatPanel?: () => void
+  onCloseRightPanel: () => void
   onToggleTableOfContents?: () => void
   onNavigateWikilink: (target: string) => void
   onViewCommitDiff: (commitHash: string) => Promise<void>
@@ -52,6 +60,12 @@ interface EditorRightPanelProps {
   locale?: AppLocale
 }
 
+type RightPanelTab = 'properties' | 'ai'
+type AiWorkspaceElementProps = {
+  onClose?: () => void
+  panelTabs?: ReactNode
+}
+
 type AiPanelSectionProps = Pick<
   EditorRightPanelProps,
   | 'defaultAiAgent'
@@ -63,10 +77,10 @@ type AiPanelSectionProps = Pick<
   | 'inspectorWidth'
   | 'locale'
   | 'onOpenNote'
-  | 'onToggleAIChat'
   | 'onUnsupportedAiPaste'
 > & {
   controller: AiPanelController
+  onClose: () => void
 }
 
 function AiPanelSection({
@@ -79,8 +93,8 @@ function AiPanelSection({
   inspectorEntry,
   inspectorWidth,
   locale,
+  onClose,
   onOpenNote,
-  onToggleAIChat,
   onUnsupportedAiPaste,
 }: AiPanelSectionProps) {
   return (
@@ -90,7 +104,7 @@ function AiPanelSection({
     >
       <AiPanelView
         controller={controller}
-        onClose={() => onToggleAIChat?.()}
+        onClose={onClose}
         onOpenNote={onOpenNote}
         onUnsupportedAiPaste={onUnsupportedAiPaste}
         defaultAiAgent={defaultAiAgent}
@@ -102,6 +116,76 @@ function AiPanelSection({
         entries={entries}
       />
     </div>
+  )
+}
+
+function RightPanelTabSwitcher({
+  activeTab,
+  aiLabel,
+  onSelectAI,
+  onSelectProperties,
+  propertiesLabel,
+}: {
+  activeTab: RightPanelTab
+  aiLabel: string
+  onSelectAI?: () => void
+  onSelectProperties: () => void
+  propertiesLabel: string
+}) {
+  return (
+    <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label={`${propertiesLabel} / ${aiLabel}`}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        className={cn(
+          TOOLBAR_ICON_BUTTON_IMPORTANT_CLASSNAME,
+          activeTab === 'properties' && '!bg-muted !text-foreground',
+        )}
+        title={propertiesLabel}
+        aria-label={propertiesLabel}
+        aria-pressed={activeTab === 'properties'}
+        onClick={onSelectProperties}
+      >
+        <SlidersHorizontal size={TOOLBAR_ICON_SIZE} weight="regular" />
+      </Button>
+      {onSelectAI && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className={cn(
+            TOOLBAR_ICON_BUTTON_IMPORTANT_CLASSNAME,
+            activeTab === 'ai' && '!bg-muted !text-foreground',
+          )}
+          title={aiLabel}
+          aria-label={aiLabel}
+          aria-pressed={activeTab === 'ai'}
+          onClick={onSelectAI}
+        >
+          <Sparkle size={TOOLBAR_ICON_SIZE} weight={activeTab === 'ai' ? 'fill' : 'regular'} />
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function renderAiWorkspaceSurface({
+  aiWorkspaceSurface,
+  fallback,
+  onClose,
+  panelTabs,
+}: {
+  aiWorkspaceSurface?: ReactNode
+  fallback: ReactNode
+  onClose: () => void
+  panelTabs: ReactNode
+}) {
+  if (!isValidElement(aiWorkspaceSurface)) return fallback
+
+  return cloneElement(
+    aiWorkspaceSurface as ReactElement<AiWorkspaceElementProps>,
+    { onClose, panelTabs },
   )
 }
 
@@ -164,14 +248,14 @@ function usePersistentAiPanelController({
 }
 
 export function EditorRightPanel({
-  showAIChat, showTableOfContents, inspectorCollapsed, inspectorWidth,
+  showAIChat, showTableOfContents, aiWorkspaceSurface, inspectorCollapsed, inspectorWidth,
   editor,
   defaultAiAgent = DEFAULT_AI_AGENT, defaultAiTarget, defaultAiAgentReadiness, defaultAiAgentReady = true,
   onUnsupportedAiPaste,
   inspectorEntry, inspectorContent, entries, gitHistory, vaultPath,
   vaultPaths,
   noteList, noteListFilter,
-  onToggleInspector, onToggleAIChat, onToggleTableOfContents, onNavigateWikilink, onViewCommitDiff,
+  onSelectInspectorPanel, onSelectAIChatPanel, onCloseRightPanel, onToggleTableOfContents, onNavigateWikilink, onViewCommitDiff,
   onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onChangeWorkspace, onInitializeProperties, onToggleRawEditor, onOpenNote,
   onFileCreated, onFileModified, onVaultChanged,
   workspaces,
@@ -207,37 +291,6 @@ export function EditorRightPanel({
     return () => window.removeEventListener(NEW_AI_CHAT_EVENT, handleRequestedNewChat)
   }, [handleNewChat])
 
-  if (!inspectorCollapsed) {
-    return (
-      <div
-        className="shrink-0 flex flex-col min-h-0"
-        style={{ width: inspectorWidth, height: '100%' }}
-      >
-        <Inspector
-          collapsed={inspectorCollapsed}
-          onToggle={onToggleInspector}
-          entry={inspectorEntry}
-          content={inspectorContent}
-          entries={entries}
-          gitHistory={gitHistory}
-          vaultPath={vaultPath}
-          onNavigate={onNavigateWikilink}
-          onViewCommitDiff={onViewCommitDiff}
-          onUpdateFrontmatter={onUpdateFrontmatter}
-          onDeleteProperty={onDeleteProperty}
-          onAddProperty={onAddProperty}
-          onCreateMissingType={onCreateMissingType}
-          onCreateAndOpenNote={onCreateAndOpenNote}
-          onChangeWorkspace={onChangeWorkspace}
-          onInitializeProperties={onInitializeProperties}
-          onToggleRawEditor={onToggleRawEditor}
-          workspaces={workspaces}
-          locale={locale}
-        />
-      </div>
-    )
-  }
-
   if (showTableOfContents) {
     return (
       <div
@@ -255,22 +308,79 @@ export function EditorRightPanel({
     )
   }
 
-  if (showAIChat) {
-    return <AiPanelSection
-      controller={aiPanelController}
-      defaultAiAgent={defaultAiAgent}
-      defaultAiAgentReadiness={defaultAiAgentReadiness}
-      defaultAiAgentReady={defaultAiAgentReady}
-      defaultAiTarget={defaultAiTarget}
-      entries={entries}
-      inspectorEntry={inspectorEntry}
-      inspectorWidth={inspectorWidth}
-      locale={locale}
-      onOpenNote={onOpenNote}
-      onToggleAIChat={onToggleAIChat}
-      onUnsupportedAiPaste={onUnsupportedAiPaste}
-    />
-  }
+  if (inspectorCollapsed && !showAIChat) return null
 
-  return null
+  const activeTab: RightPanelTab = showAIChat ? 'ai' : 'properties'
+  const propertiesLabel = translate(locale ?? 'en', 'inspector.title.properties')
+  const aiLabel = translate(locale ?? 'en', 'ai.panel.title')
+  const panelTabs = (
+    <RightPanelTabSwitcher
+      activeTab={activeTab}
+      aiLabel={aiLabel}
+      onSelectAI={onSelectAIChatPanel}
+      onSelectProperties={onSelectInspectorPanel}
+      propertiesLabel={propertiesLabel}
+    />
+  )
+
+  return (
+    <div
+      className={cn(
+        'editor-right-panel shrink-0 flex min-h-0 flex-col border-l border-sidebar-border bg-sidebar text-sidebar-foreground',
+        activeTab === 'ai' && 'editor-right-panel--ai',
+      )}
+      style={{ width: inspectorWidth, minWidth: 240, height: '100%' }}
+    >
+      {activeTab === 'properties' ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <Inspector
+            collapsed={false}
+            panelTabs={panelTabs}
+            onToggle={onCloseRightPanel}
+            entry={inspectorEntry}
+            content={inspectorContent}
+            entries={entries}
+            gitHistory={gitHistory}
+            vaultPath={vaultPath}
+            onNavigate={onNavigateWikilink}
+            onViewCommitDiff={onViewCommitDiff}
+            onUpdateFrontmatter={onUpdateFrontmatter}
+            onDeleteProperty={onDeleteProperty}
+            onAddProperty={onAddProperty}
+            onCreateMissingType={onCreateMissingType}
+            onCreateAndOpenNote={onCreateAndOpenNote}
+            onChangeWorkspace={onChangeWorkspace}
+            onInitializeProperties={onInitializeProperties}
+            onToggleRawEditor={onToggleRawEditor}
+            workspaces={workspaces}
+            locale={locale}
+          />
+        </div>
+      ) : (
+        <div className="editor-right-panel__ai-workspace flex min-h-0 flex-1 overflow-hidden">
+          {renderAiWorkspaceSurface({
+            aiWorkspaceSurface,
+            onClose: onCloseRightPanel,
+            panelTabs,
+            fallback: (
+            <AiPanelSection
+              controller={aiPanelController}
+              defaultAiAgent={defaultAiAgent}
+              defaultAiAgentReadiness={defaultAiAgentReadiness}
+              defaultAiAgentReady={defaultAiAgentReady}
+              defaultAiTarget={defaultAiTarget}
+              entries={entries}
+              inspectorEntry={inspectorEntry}
+              inspectorWidth={inspectorWidth}
+              locale={locale}
+              onClose={onCloseRightPanel}
+              onOpenNote={onOpenNote}
+              onUnsupportedAiPaste={onUnsupportedAiPaste}
+            />
+            ),
+          })}
+        </div>
+      )}
+    </div>
+  )
 }

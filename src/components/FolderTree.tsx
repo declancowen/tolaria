@@ -58,22 +58,7 @@ interface FolderTreeBodyProps extends Pick<
   onOpenMenu: (node: FolderNode, event: ReactMouseEvent<HTMLElement>) => void
 }
 
-function vaultRootLabel(vaultRootPath: string, locale: AppLocale): string {
-  const trimmed = vaultRootPath.trim().replace(/[\\/]+$/g, '')
-  return trimmed.split(/[\\/]/).filter(Boolean).pop() || translate(locale, 'status.vault.default')
-}
-
-function buildRootNode(folders: FolderNode[], vaultRootPath: string | undefined, locale: AppLocale): FolderNode | null {
-  if (!vaultRootPath?.trim()) return null
-  return {
-    name: vaultRootLabel(vaultRootPath, locale),
-    path: '',
-    rootPath: vaultRootPath,
-    children: folders,
-  }
-}
-
-function useDisplayedFolders(folders: FolderNode[], expanded: Record<string, boolean>, vaultRootPath: string | undefined, locale: AppLocale) {
+function useDisplayedFolders(folders: FolderNode[], expanded: Record<string, boolean>) {
   return useMemo(() => {
     if (folders.some((folder) => folder.rootPath)) {
       const expandedRoots = Object.fromEntries(
@@ -86,12 +71,11 @@ function useDisplayedFolders(folders: FolderNode[], expanded: Record<string, boo
         displayedFolders: folders,
       }
     }
-    const rootNode = buildRootNode(folders, vaultRootPath, locale)
     return {
-      displayedExpanded: rootNode ? { [folderNodeKey(rootNode)]: true, ...expanded } : expanded,
-      displayedFolders: rootNode ? [rootNode] : folders,
+      displayedExpanded: expanded,
+      displayedFolders: folders,
     }
-  }, [expanded, folders, locale, vaultRootPath])
+  }, [expanded, folders])
 }
 
 function creationParentForSelection(selection: SidebarSelection): FolderCreationParent | undefined {
@@ -186,9 +170,9 @@ export const FolderTree = memo(function FolderTree({
     openCreateForm()
   }, [closeContextMenu, openCreateForm])
 
-  const { displayedExpanded, displayedFolders } = useDisplayedFolders(folders, expanded, vaultRootPath, locale)
+  const { displayedExpanded, displayedFolders } = useDisplayedFolders(folders, expanded)
 
-  if (displayedFolders.length === 0 && !isCreating) return null
+  if (displayedFolders.length === 0 && !isCreating && !onCreateFolder) return null
 
   return (
     <div className="border-b border-border" style={{ padding: '0 6px' }}>

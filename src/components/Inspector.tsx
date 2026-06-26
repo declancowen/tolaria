@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { VaultEntry, GitCommit, WorkspaceIdentity } from '../types'
 import { cn } from '@/lib/utils'
 import { Separator } from './ui/separator'
@@ -26,6 +26,7 @@ const INSPECTOR_REFERENCE_DELAY_MS = 150
 
 interface InspectorProps {
   collapsed: boolean
+  panelTabs?: ReactNode
   onToggle: () => void
   entry: VaultEntry | null
   content: string | null
@@ -294,7 +295,7 @@ function InspectorBody({
   onToggleRawEditor,
   workspaces,
   locale = 'en',
-}: Omit<InspectorProps, 'collapsed' | 'onToggle'>) {
+}: Omit<InspectorProps, 'collapsed' | 'onToggle' | 'panelTabs'>) {
   const frontmatter = useMemo(() => parseFrontmatter(content), [content])
   const frontmatterState = useMemo(() => detectFrontmatterState(content), [content])
   const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
@@ -369,6 +370,7 @@ export function Inspector({ collapsed, onToggle, ...bodyProps }: InspectorProps)
         collapsed={collapsed}
         frontmatterWarnings={frontmatterWarnings}
         locale={bodyProps.locale}
+        panelTabs={bodyProps.panelTabs}
         onToggle={onToggle}
         onOpenRawEditor={bodyProps.onToggleRawEditor}
       />

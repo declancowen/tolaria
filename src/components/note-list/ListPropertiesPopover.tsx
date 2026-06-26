@@ -2,6 +2,7 @@ import { useState, useMemo, useCallback, useEffect, useId, useRef, type Keyboard
 import { SlidersHorizontal, DotsSixVertical } from '@phosphor-icons/react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
+import { TOOLBAR_ICON_SIZE } from '@/components/ui/toolbarIconButton'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -392,7 +393,7 @@ export function ListPropertiesPopover({
           aria-label={triggerTitle}
           data-testid="list-properties-btn"
       >
-        <SlidersHorizontal size={16} />
+        <SlidersHorizontal size={TOOLBAR_ICON_SIZE} />
       </Button>
       </PopoverTrigger>
       <ListPropertiesPopoverPanel

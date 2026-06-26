@@ -30,12 +30,10 @@ import { getContextMenuPositionStyle } from '../contextMenuPosition'
 import { countByFilter } from '../../utils/noteListHelpers'
 import { viewIdentityKey, viewSelectionForView } from '../../utils/viewIdentity'
 import { translate, type AppLocale } from '../../lib/i18n'
+import { TOOLBAR_ICON_BUTTON_IMPORTANT_CLASSNAME, TOOLBAR_ICON_SIZE } from '../ui/toolbarIconButton'
 
 export { SidebarTopNav } from './SidebarTopNav'
 export { FavoritesSection } from './FavoritesSection'
-
-const SIDEBAR_TITLE_BAR_ACTION_CLASSNAME =
-  '!h-auto !w-auto !min-w-0 !rounded-none !p-0 text-muted-foreground hover:!bg-transparent hover:text-foreground [&_svg]:!size-4'
 
 const SIDEBAR_COLLAPSE_SHORTCUT = getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewEditorList)
 const HISTORY_BACK_SHORTCUT = getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewGoBack)
@@ -365,7 +363,7 @@ function SidebarTitleBarAction({
           type="button"
           variant="ghost"
           size="icon-xs"
-          className={SIDEBAR_TITLE_BAR_ACTION_CLASSNAME}
+          className={TOOLBAR_ICON_BUTTON_IMPORTANT_CLASSNAME}
           onClick={(event) => { event.stopPropagation(); onClick?.() }}
           disabled={disabled}
           aria-label={label}
@@ -402,15 +400,10 @@ export function SidebarTitleBar({
   return (
     <div
       ref={dragRegionRef}
-      className="shrink-0 flex items-center border-b border-border"
-      style={{ height: 52, padding: '0 8px', paddingLeft: 90, cursor: 'default', justifyContent: 'flex-start' }}
+      className="sidebar-title-bar shrink-0 flex items-center justify-between border-b border-border"
+      style={{ height: 52, cursor: 'default' }}
     >
-      <div className="flex items-center gap-5" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
-        {onCollapse && (
-          <SidebarTitleBarAction label={collapseLabel} shortcut={SIDEBAR_COLLAPSE_SHORTCUT} onClick={onCollapse}>
-            <SidebarSimple size={16} weight="regular" />
-          </SidebarTitleBarAction>
-        )}
+      <div className="flex items-center gap-3" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
         {onGoBack && (
           <SidebarTitleBarAction
             label={backLabel}
@@ -418,7 +411,7 @@ export function SidebarTitleBar({
             onClick={onGoBack}
             disabled={!canGoBack}
           >
-            <ArrowLeft size={16} weight="regular" />
+            <ArrowLeft size={TOOLBAR_ICON_SIZE} weight="regular" />
           </SidebarTitleBarAction>
         )}
         {onGoForward && (
@@ -428,10 +421,17 @@ export function SidebarTitleBar({
             onClick={onGoForward}
             disabled={!canGoForward}
           >
-            <ArrowRight size={16} weight="regular" />
+            <ArrowRight size={TOOLBAR_ICON_SIZE} weight="regular" />
           </SidebarTitleBarAction>
         )}
       </div>
+      {onCollapse && (
+        <div className="flex items-center" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
+          <SidebarTitleBarAction label={collapseLabel} shortcut={SIDEBAR_COLLAPSE_SHORTCUT} onClick={onCollapse}>
+            <SidebarSimple size={TOOLBAR_ICON_SIZE} weight="regular" />
+          </SidebarTitleBarAction>
+        </div>
+      )}
     </div>
   )
 }

@@ -44,6 +44,8 @@ type BreadcrumbActions = Pick<
   | 'onRenameFilename'
   | 'noteWidth'
   | 'onToggleNoteWidth'
+  | 'leftPanelsCollapsed'
+  | 'onExpandLeftPanels'
 >
 
 const LOADING_BREADCRUMB_ENTRY: VaultEntry = {
@@ -224,6 +226,8 @@ function ActiveTabBreadcrumb({
       onRenameFilename={actions.onRenameFilename}
       noteWidth={actions.noteWidth}
       onToggleNoteWidth={actions.onToggleNoteWidth}
+      leftPanelsCollapsed={actions.leftPanelsCollapsed}
+      onExpandLeftPanels={actions.onExpandLeftPanels}
       locale={locale}
     />
   )
@@ -258,6 +262,8 @@ function EditorLoadingBreadcrumb({
       onToggleInspector={actions.onToggleInspector}
       noteWidth={actions.noteWidth}
       onToggleNoteWidth={actions.onToggleNoteWidth}
+      leftPanelsCollapsed={actions.leftPanelsCollapsed}
+      onExpandLeftPanels={actions.onExpandLeftPanels}
       locale={locale}
     />
   )
@@ -292,6 +298,8 @@ function buildBreadcrumbActions(model: EditorContentModel): BreadcrumbActions {
     onRenameFilename: model.onRenameFilename,
     noteWidth: model.noteWidth,
     onToggleNoteWidth: model.onToggleNoteWidth,
+    leftPanelsCollapsed: model.leftPanelsCollapsed,
+    onExpandLeftPanels: model.onExpandLeftPanels,
   }
 }
 

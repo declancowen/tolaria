@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/lib/utils'
+import { TOOLBAR_ICON_SIZE } from '@/components/ui/toolbarIconButton'
 import { ArrowUp, ArrowDown } from '@phosphor-icons/react'
 import { translate, type AppLocale, type TranslationKey } from '../lib/i18n'
 import { type SortOption, type SortDirection, getDefaultDirection, SORT_OPTIONS } from '../utils/noteListHelpers'
@@ -225,7 +226,7 @@ function SortDropdownTrigger({
     <button
       ref={triggerRef}
       type="button"
-      className={cn('flex items-center gap-0.5 rounded px-1 py-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground', open && 'bg-accent text-foreground')}
+      className={cn('flex h-6 items-center gap-0.5 rounded px-1 py-0.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground', open && 'bg-accent text-foreground')}
       onClick={(event) => {
         event.stopPropagation()
         onToggle()
@@ -235,8 +236,8 @@ function SortDropdownTrigger({
       aria-expanded={open}
       data-testid={`sort-button-${groupLabel}`}
     >
-      <DirectionIcon size={12} data-testid={`sort-direction-icon-${groupLabel}`} />
-      <span className="text-[10px] font-medium">{currentLabel}</span>
+      <DirectionIcon size={TOOLBAR_ICON_SIZE} data-testid={`sort-direction-icon-${groupLabel}`} />
+      <span className="text-[12px] font-medium">{currentLabel}</span>
     </button>
   )
 }

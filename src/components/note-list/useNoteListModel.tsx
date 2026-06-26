@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useCallback } from 'react'
+import { useEffect, useMemo, useCallback, useState } from 'react'
 import type {
+  FolderNode,
   VaultEntry,
   SidebarSelection,
   ModifiedFile,
@@ -9,8 +10,8 @@ import type {
   ViewFile,
 } from '../../types'
 import type { AppLocale } from '../../lib/i18n'
-import type { NoteListFilter, RelationshipGroup } from '../../utils/noteListHelpers'
-import { countByFilter, countAllByFilter, countAllNotesByFilter } from '../../utils/noteListHelpers'
+import type { GroupByOption, NoteListDocumentGroup, NoteListFilter, RelationshipGroup } from '../../utils/noteListHelpers'
+import { countByFilter, countAllNotesByFilter, countFolderByFilter, groupEntriesByOption } from '../../utils/noteListHelpers'
 import type { AllNotesFileVisibility } from '../../utils/allNotesFileVisibility'
 import type { GitRepositoryOption } from '../../utils/gitRepositories'
 import type { ImmediateCreateOptions } from '../../hooks/useNoteCreation'
@@ -35,8 +36,10 @@ import { useChangesContextMenu } from './NoteListChangesMenu'
 import { useNoteListContextMenu } from './NoteListContextMenu'
 import { addNoteListSearchToggleListener, dispatchNoteListSearchAvailability } from '../../utils/noteListSearchEvents'
 import { useDateDisplayFormat } from '../../hooks/useAppPreferences'
+import type { NoteListDisplayMode } from './noteListDisplayMode'
 
 type EntitySelection = Extract<SidebarSelection, { kind: 'entity' }>
+type FolderSelection = Extract<SidebarSelection, { kind: 'folder' }>
 const LIKELY_NEXT_PRELOAD_LIMIT = 6
 const ADJACENT_PRELOAD_RADIUS = 3
 const LIKELY_NEXT_PRELOAD_START_DELAY_MS = 350
@@ -142,12 +145,53 @@ function useFilterCounts(
 ) {
   return useMemo(() => {
     if (selection.kind === 'sectionGroup') return countByFilter(entries, selection.type)
-    if (selection.kind === 'folder') return countAllByFilter(entries)
+    if (selection.kind === 'folder') return countFolderByFilter(entries, selection)
     if (selection.kind === 'filter' && selection.filter === 'all') {
       return countAllNotesByFilter(entries, allNotesFileVisibility)
     }
     return { open: 0, archived: 0 }
   }, [allNotesFileVisibility, entries, selection])
+}
+
+function folderRootMatches(selection: FolderSelection, node: FolderNode, hasWorkspaceRoots: boolean): boolean {
+  if (!hasWorkspaceRoots) return true
+  if (!selection.rootPath) return !node.rootPath
+  return node.rootPath === selection.rootPath
+}
+
+function inheritFolderRoot(children: FolderNode[], rootPath?: string): FolderNode[] {
+  if (!rootPath) return children
+  return children.map((child) => ({
+    ...child,
+    rootPath: child.rootPath ?? rootPath,
+  }))
+}
+
+function findSelectedFolderChildren(folders: FolderNode[], selection: SidebarSelection): FolderNode[] {
+  if (selection.kind !== 'folder') return []
+  const hasWorkspaceRoots = folders.some((folder) => folder.rootPath)
+
+  if (!selection.path) {
+    if (!hasWorkspaceRoots) return inheritFolderRoot(folders, selection.rootPath)
+    const selectedRoot = folders.find((folder) => (
+      folder.path === '' && folderRootMatches(selection, folder, hasWorkspaceRoots)
+    ))
+    return selectedRoot ? inheritFolderRoot(selectedRoot.children, selectedRoot.rootPath) : []
+  }
+
+  const visit = (nodes: FolderNode[], inheritedRootPath?: string): FolderNode[] | null => {
+    for (const node of nodes) {
+      const nodeRootPath = node.rootPath ?? inheritedRootPath
+      if (node.path === selection.path && (!hasWorkspaceRoots || nodeRootPath === selection.rootPath)) {
+        return inheritFolderRoot(node.children, nodeRootPath)
+      }
+      const match = visit(node.children, nodeRootPath)
+      if (match) return match
+    }
+    return null
+  }
+
+  return visit(folders) ?? []
 }
 
 interface UseNoteListContentParams {
@@ -536,9 +580,12 @@ function useRenderItem({
 
 export interface NoteListProps {
   entries: VaultEntry[]
+  folders?: FolderNode[]
   selection: SidebarSelection
   selectedNote: VaultEntry | null
   loading?: boolean
+  displayMode?: NoteListDisplayMode
+  onDisplayModeChange?: (mode: NoteListDisplayMode) => void
   noteListFilter: NoteListFilter
   onNoteListFilterChange: (filter: NoteListFilter) => void
   inboxPeriod?: InboxPeriod
@@ -550,6 +597,7 @@ export interface NoteListProps {
   onGitRepositoryChange?: (path: string) => void
   getNoteStatus?: (path: string) => NoteStatus
   sidebarCollapsed?: boolean
+  onSelectFolder?: (selection: FolderSelection) => void
   onSelectNote: (entry: VaultEntry) => void
   onReplaceActiveTab: (entry: VaultEntry) => void
   onEnterNeighborhood?: (entry: VaultEntry) => void
@@ -582,6 +630,10 @@ export interface NoteListProps {
 }
 
 function buildNoteListLayoutModel(params: {
+  displayMode: NoteListDisplayMode
+  documentGroups: NoteListDocumentGroup[]
+  folderChildren: FolderNode[]
+  groupBy: GroupByOption
   selection: SidebarSelection
   views?: ViewFile[]
   sidebarCollapsed?: boolean
@@ -593,6 +645,9 @@ function buildNoteListLayoutModel(params: {
   noteListFilter: NoteListFilter
   filterCounts: ReturnType<typeof useFilterCounts>
   onNoteListFilterChange: (filter: NoteListFilter) => void
+  onDisplayModeChange: (mode: NoteListDisplayMode) => void
+  onGroupByChange: (option: GroupByOption) => void
+  onSelectFolder?: (selection: FolderSelection) => void
   onOpenType: (entry: VaultEntry) => void
   locale: AppLocale
   content: ReturnType<typeof useNoteListContent> & {
@@ -605,6 +660,10 @@ function buildNoteListLayoutModel(params: {
 }) {
   return {
     title: resolveHeaderTitle(params.selection, params.content.typeDocument, params.views, params.locale),
+    displayMode: params.displayMode,
+    documentGroups: params.documentGroups,
+    folderChildren: params.folderChildren,
+    groupBy: params.groupBy,
     loading: params.loading,
     locale: params.locale,
     typeDocument: params.content.typeDocument,
@@ -654,6 +713,9 @@ function buildNoteListLayoutModel(params: {
     noteListFilter: params.noteListFilter,
     filterCounts: params.filterCounts,
     onNoteListFilterChange: params.onNoteListFilterChange,
+    onDisplayModeChange: params.onDisplayModeChange,
+    onGroupByChange: params.onGroupByChange,
+    onSelectFolder: params.onSelectFolder,
     multiSelect: params.interaction.multiSelect,
     handleBulkArchive: params.interaction.handleBulkArchive,
     handleBulkDeletePermanently: params.interaction.handleBulkDeletePermanently,
@@ -670,9 +732,12 @@ function buildNoteListLayoutModel(params: {
 
 export function useNoteListModel({
   entries,
+  folders = [],
   selection,
   selectedNote,
   loading = false,
+  displayMode: controlledDisplayMode,
+  onDisplayModeChange,
   noteListFilter,
   onNoteListFilterChange,
   inboxPeriod = 'all',
@@ -683,6 +748,7 @@ export function useNoteListModel({
   onGitRepositoryChange,
   getNoteStatus,
   sidebarCollapsed,
+  onSelectFolder,
   onReplaceActiveTab,
   onEnterNeighborhood,
   onCreateNote,
@@ -712,10 +778,18 @@ export function useNoteListModel({
   allNotesFileVisibility,
   locale = 'en',
 }: NoteListProps) {
+  const [localDisplayMode, setLocalDisplayMode] = useState<NoteListDisplayMode>('list')
+  const [groupBy, setGroupBy] = useState<GroupByOption>('none')
+  const displayMode = controlledDisplayMode ?? localDisplayMode
+  const handleDisplayModeChange = useCallback((mode: NoteListDisplayMode) => {
+    if (controlledDisplayMode === undefined) setLocalDisplayMode(mode)
+    onDisplayModeChange?.(mode)
+  }, [controlledDisplayMode, onDisplayModeChange])
   const selectedNotePath = selectedNote?.path ?? null
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
   const { isInboxView } = useViewFlags(selection)
   const filterCounts = useFilterCounts(entries, selection, allNotesFileVisibility)
+  const folderChildren = useMemo(() => findSelectedFolderChildren(folders, selection), [folders, selection])
   const content = useNoteListContent({
     entries,
     selection,
@@ -783,6 +857,10 @@ export function useNoteListModel({
     multiSelect: interaction.multiSelect,
     noteListKeyboard: interaction.noteListKeyboard,
   })
+  const documentGroups = useMemo(
+    () => groupEntriesByOption(content.searched, groupBy),
+    [content.searched, groupBy],
+  )
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key !== 'Escape') return
 
@@ -810,6 +888,10 @@ export function useNoteListModel({
   }, [isNoteListSearchActive, toggleSearchShortcut])
 
   return buildNoteListLayoutModel({
+    displayMode,
+    documentGroups,
+    folderChildren,
+    groupBy,
     selection,
     views,
     sidebarCollapsed,
@@ -822,6 +904,9 @@ export function useNoteListModel({
     noteListFilter,
     filterCounts,
     onNoteListFilterChange,
+    onDisplayModeChange: handleDisplayModeChange,
+    onGroupByChange: setGroupBy,
+    onSelectFolder,
     locale,
     content: {
       ...content,
