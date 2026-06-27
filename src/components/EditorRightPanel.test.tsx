@@ -142,4 +142,31 @@ describe('EditorRightPanel', () => {
     expect(screen.getByText('keep this session')).toBeTruthy()
     expect(screen.getByText('Mock response')).toBeTruthy()
   })
+
+  it('uses only the right-panel divider for the properties panel', () => {
+    const { container } = rtlRender(
+      <EditorRightPanel
+        showAIChat={false}
+        showTableOfContents={false}
+        inspectorCollapsed={false}
+        inspectorWidth={320}
+        editor={{} as never}
+        inspectorEntry={entry}
+        inspectorContent="Active note content"
+        entries={[entry]}
+        gitHistory={[]}
+        vaultPath="/tmp/vault"
+        onToggleInspector={vi.fn()}
+        onToggleAIChat={vi.fn()}
+        onNavigateWikilink={vi.fn()}
+        onViewCommitDiff={vi.fn()}
+      />,
+      { wrapper: TooltipProvider },
+    )
+
+    const rightPanel = container.querySelector('.editor-right-panel')
+    const inspector = rightPanel?.querySelector('aside')
+    expect(rightPanel).toHaveClass('border-l')
+    expect(inspector).not.toHaveClass('border-l')
+  })
 })

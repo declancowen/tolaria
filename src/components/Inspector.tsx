@@ -27,6 +27,7 @@ const INSPECTOR_REFERENCE_DELAY_MS = 150
 interface InspectorProps {
   collapsed: boolean
   panelTabs?: ReactNode
+  showLeftBorder?: boolean
   onToggle: () => void
   entry: VaultEntry | null
   content: string | null
@@ -353,7 +354,7 @@ function InspectorBody({
   )
 }
 
-export function Inspector({ collapsed, onToggle, ...bodyProps }: InspectorProps) {
+export function Inspector({ collapsed, onToggle, showLeftBorder = true, ...bodyProps }: InspectorProps) {
   const inspectorRef = useRef<HTMLElement | null>(null)
   useInspectorFocusBoundary(inspectorRef)
   const frontmatterWarnings = useMemo(
@@ -364,7 +365,11 @@ export function Inspector({ collapsed, onToggle, ...bodyProps }: InspectorProps)
   return (
     <aside
       ref={inspectorRef}
-      className={cn('flex flex-1 flex-col overflow-hidden border-l border-border bg-background text-foreground transition-[width] duration-200', collapsed && '!w-10 !min-w-10')}
+      className={cn(
+        'flex flex-1 flex-col overflow-hidden bg-background text-foreground transition-[width] duration-200',
+        showLeftBorder && 'border-l border-border',
+        collapsed && '!w-10 !min-w-10',
+      )}
     >
       <InspectorHeader
         collapsed={collapsed}

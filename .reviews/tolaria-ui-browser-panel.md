@@ -28,6 +28,7 @@
 - `src-tauri/src/vault/config_seed.rs`, `src-tauri/src/vault/getting_started.rs`, vault/MCP guidance readers, and guidance docs — added Turn 3
 - `src-tauri/src/app_updater.rs`, release workflows, and `src-tauri/tauri.conf.json` updater endpoints — added Turn 3
 - live transcription cleanup in `src/components/RecordingTranscriptBlock.tsx`, `src/utils/transcriptionRuntime.ts`, native transcription commands, and persistent dictation toast wiring — added Turn 3
+- `src/App.tsx`, `src/components/EditorRightPanel.tsx`, `src/components/Inspector.tsx`, `src/components/note-list/NoteListViews.tsx`, and regression tests for browser AI panel / grouped card headings / properties divider — added Turn 4
 
 ## Hotspots
 
@@ -43,17 +44,85 @@
 - hard migration of managed guidance into hidden `.laputa/agents/` with restore/MCP parity — added Turn 3
 - chunked live recording transcription and async native model/download commands — added Turn 3
 - fork-owned updater metadata and release feed generation — added Turn 3
+- browser-mode AI workspace visibility without an open editor — added Turn 4
+- single-divider right-panel ownership for Properties vs AI — added Turn 4
+- virtualized card-grid group heading span/alignment — added Turn 4
 
 ## Review status
 
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-27 02:45:01 BST |
-| **Total turns** | 3 |
+| **Last reviewed** | 2026-06-27 10:12:26 BST |
+| **Total turns** | 4 |
 | **Open findings** | 0 |
 | **Resolved findings** | 10 |
 | **Accepted findings** | 0 |
+
+## Turn 4 — 2026-06-27 10:12:26 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | 18f2b6e1 plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Deep-reviewed the focused UI patch that removes the duplicate Properties divider, mounts AI chat beside the browser surface when no editor is open, and makes virtualized card-grid group headings span the full grid row without relying on `:has()`.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** medium — shared app layout state and virtualized note-list rendering changed, but the patch is narrow and has direct regression tests plus full frontend safety checks.
+**Change archetypes:** UI layout, right-panel composition, virtualized grid rendering, regression coverage.
+**Intended change:** Match Properties divider thickness to AI chat, allow AI chat from browser/no-document state, and correct grouped rows/cards alignment without disturbing list mode or editor right-panel behavior.
+**Intent vs actual:** The implementation matches the request. `Inspector` no longer draws its own left border when nested inside `EditorRightPanel`, the browser surface now renders the same side-mode AI workspace when the editor is hidden, and grouped card headings are marked on the virtualized grid item wrapper so they span all columns.
+**Confidence:** high for the React behavior covered by tests and build; medium for pixel-perfect visual alignment until a packaged/native visual pass is repeated after the build.
+**Coverage note:** Targeted regression tests cover the three requested failures. Full frontend coverage also passed at 87.01% lines.
+**Finding triage:** No new findings. The most likely bug classes were duplicate border ownership, missing mount point for browser-mode AI, and virtualized grid wrapper alignment drift; each now has a direct assertion or clear code ownership.
+**Static/analyzer evidence:** ESLint, TypeScript, production Vite build, locale validation, whitespace check, demo-vault dirt check, targeted Vitest, and full frontend coverage passed. CodeScene MCP/CLI and Codacy CLI remained unavailable in this environment.
+**Architecture impact:** No new architecture decision. The patch keeps right-panel border ownership in `EditorRightPanel` and keeps note-list virtualized grid layout inside `NoteListViews`.
+**Deep-review evidence:** Correctness/safety pass checked browser/editor visibility state, AI workspace open/close behavior without an active tab, panel tab availability when an editor is present, properties border ownership, and grid heading item wrapping. Maintainability/structure pass checked that the border special case is a small prop on the existing Inspector boundary and that grid span logic lives on the virtualized item wrapper rather than in fragile global selectors.
+**Bug classes / invariants checked:** AI chat can open with no active document; editor-mode properties still show document properties; no duplicate right-panel left divider; group headings remain full-row in card grid mode; list/rows continue using their existing virtualized row path; demo vault fixtures stay clean.
+**Branch totality:** Re-read the current-turn files and checked them against prior right-panel/browser-view findings from Turns 1-3.
+**Sibling closure:** Properties and AI right-panel header surfaces were checked together; browser AI and editor AI share the same `AppAiWorkspaceSurface`; list, row, and card browser modes still flow through `buildBrowserViewItems`.
+**Remediation impact surface:** The changes are local to React layout/rendering and test setup. No native, persistence, locale copy, or vault scanner behavior was changed in this turn.
+**Residual risk / unknowns:** CodeScene and Codacy are still missing locally. Native visual smoke is deferred to the Apple Silicon build run requested after push.
+
+### Validation
+
+- `pnpm exec tsc --noEmit` — passed
+- `pnpm exec vitest run src/components/EditorRightPanel.test.tsx src/components/NoteList.rendering.test.tsx src/App.test.tsx --reporter=dot` — passed, 100 tests
+- `pnpm lint` — passed
+- `pnpm build` — passed
+- `pnpm l10n:validate` — passed, 20 locale catalogs / 1,000 English keys
+- `FRONTEND_COVERAGE_CONCURRENCY=1 VITEST_COVERAGE_MAX_WORKERS=2 node scripts/run-vitest-coverage-shards.mjs --silent` — passed, 4,756 tests; lines 87.01%
+- `git diff --check` — passed
+- `git status --short -- demo-vault demo-vault-v2` — clean
+- CodeScene file/project health — not run; no CodeScene MCP tool exposed and `cs` CLI unavailable
+- Codacy scan — not run; no Codacy MCP tool exposed and `.codacy/cli.sh` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `App.tsx`, `App.css`, `EditorRightPanel.tsx`, `Inspector.tsx`, `NoteListViews.tsx`, AI workspace sizing/header code, and the shared Virtuoso test mock.
+- **Prior open findings rechecked:** none open from Turns 1-3.
+- **Prior resolved/adjacent areas revalidated:** three-column browser/editor separation, right-panel tab switching, shared AI workspace side surface, and grouped note-list virtualization.
+- **Hotspots or sibling paths revisited:** card grid grouping, row/list grouped rendering path, browser AI side panel, and editor Properties/AI right panel.
+- **Dependency/adjacent surfaces revalidated:** frontend build, localization validation, coverage, whitespace, and demo-vault dirt checks.
+- **Why this is enough:** The review attacked the exact UI ownership bugs reported by the user and paired them with targeted regression tests plus the full frontend coverage lane.
+
+### Challenger pass
+
+- `done` — Assumed the browser AI panel could accidentally render inside the editor or lose side-mode behavior. The regression asserts it mounts under `.app__browser-ai-panel`, outside `.app__editor`, with `data-ai-workspace-mode="side"`.
+- `done` — Assumed virtualized grid group headings might not span because class application was on the wrong DOM layer. The regression checks the nearest grid item wrapper receives the group span class.
+
+### Resolved / Carried / New findings
+
+No new findings.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** run the requested Apple Silicon packaged build and visually verify Properties/AI divider thickness plus grouped rows/cards in the native app.
+3. **Patterns noticed:** keep side-panel border ownership at the containing panel level; avoid global CSS selectors that depend on descendant structure inside virtualized wrappers.
+4. **Suggested approach:** if grouped row/card alignment continues to shift visually, add one Playwright screenshot smoke against a deterministic grouped vault fixture.
+5. **Architecture transition:** none.
+6. **Defer on purpose:** CodeScene and Codacy remain deferred because their local/MCP entrypoints are unavailable here.
 
 ## Turn 3 — 2026-06-27 02:45:01 BST
 

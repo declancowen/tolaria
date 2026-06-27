@@ -1,7 +1,8 @@
-import { createElement } from 'react'
-import { Virtuoso, VirtuosoGrid, type VirtuosoHandle } from 'react-virtuoso'
+import { createElement, forwardRef } from 'react'
+import { Virtuoso, VirtuosoGrid, type GridItemProps, type VirtuosoHandle } from 'react-virtuoso'
 import { FileText, Folder } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { FolderNode, SidebarSelection, VaultEntry } from '../../types'
 import type { GroupByOption, NoteListDocumentGroup, SortOption, SortDirection, SortConfig, RelationshipGroup } from '../../utils/noteListHelpers'
 import { relativeDate } from '../../utils/noteListHelpers'
@@ -18,6 +19,26 @@ type BrowserViewItem =
   | { kind: 'entry'; entry: VaultEntry; key: string }
   | { kind: 'folder'; folder: FolderNode; key: string }
   | { kind: 'group'; group: NoteListDocumentGroup; key: string }
+type BrowserGridContext = { items: BrowserViewItem[] }
+
+const BrowserGridItem = forwardRef<HTMLDivElement, GridItemProps & { context?: BrowserGridContext }>(
+  function BrowserGridItem({ children, className, context, style, ...props }, ref) {
+    const item = context?.items[props['data-index']]
+    const isGroup = item?.kind === 'group'
+
+    return (
+      <div
+        {...props}
+        ref={ref}
+        className={cn(className, isGroup && 'browser-view-grid-item--group')}
+        data-browser-view-grid-kind={item?.kind}
+        style={isGroup ? { ...style, gridColumn: '1 / -1' } : style}
+      >
+        {children}
+      </div>
+    )
+  },
+)
 
 function resolveEmptyText({
   isChangesView,
@@ -361,6 +382,8 @@ export function BrowserView({
       <VirtuosoGrid
         style={{ height: '100%' }}
         data={browserItems}
+        context={{ items: browserItems }}
+        components={{ Item: BrowserGridItem }}
         overscan={200}
         listClassName="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] content-start gap-2 p-2"
         itemClassName="browser-view-grid-item min-w-0"

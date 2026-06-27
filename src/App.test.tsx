@@ -582,6 +582,30 @@ describe('App', () => {
     expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
   })
 
+  it('opens AI chat beside the document browser when no note is selected', async () => {
+    mockCommandResults.get_settings = createSettings({
+      auto_advance_inbox_after_organize: null,
+      default_ai_agent: 'codex',
+    })
+    mockCommandResults.get_ai_agents_status = {
+      claude_code: { installed: true, version: '2.1.90' },
+      codex: { installed: true, version: '0.122.0-alpha.1' },
+      opencode: { installed: false, version: null },
+      pi: { installed: false, version: null },
+      gemini: { installed: false, version: null },
+    }
+    const { container } = render(<App />)
+
+    await screen.findByText('All Notes')
+    expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('ai-workspace-floating-button'))
+
+    const workspace = await screen.findByTestId('ai-workspace')
+    expect(workspace).toHaveAttribute('data-ai-workspace-mode', 'side')
+    expect(container.querySelector('.app__browser-ai-panel [data-testid="ai-workspace"]')).toBe(workspace)
+    expect(container.querySelector('.app__editor [data-testid="ai-workspace"]')).toBeNull()
+  })
+
   it('opens a note window after loading the active vault graph', async () => {
     const listVault = vi.fn(() => mockEntries)
     const reloadVaultEntry = vi.fn(({ path }: { path: string }) =>

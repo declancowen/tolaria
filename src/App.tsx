@@ -1279,6 +1279,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   const mainBrowserVisible = noteListVisible && mainBrowserSelectionActive && mainSurfaceMode === 'browser'
   const noteListSurfaceVisible = noteListVisible && (!mainBrowserSelectionActive || mainSurfaceMode === 'browser')
   const editorSurfaceVisible = !mainBrowserVisible
+  const browserAiPanelVisible = effectiveShowAIChat && !editorSurfaceVisible
 
   const { status: updateStatus, actions: updateActions } = useUpdater(
     settings.release_channel,
@@ -1844,6 +1845,11 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
               locale={appLocale}
             />
           </div>}
+          {browserAiPanelVisible && (
+            <div className="app__browser-ai-panel flex min-h-0 shrink-0 overflow-hidden">
+              {aiWorkspaceSurface}
+            </div>
+          )}
         </div>
         <UpdateBanner status={updateStatus} actions={updateActions} locale={appLocale} />
         <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />

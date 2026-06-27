@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { NoteList } from './NoteList'
+import { BrowserView } from './note-list/NoteListViews'
 import { openNoteListPropertiesPicker } from './note-list/noteListPropertiesEvents'
 import { AppPreferencesProvider } from '../hooks/useAppPreferences'
 import {
@@ -567,6 +568,34 @@ describe('NoteList rendering', () => {
       )
       expect(button).not.toHaveAttribute('tabindex', '-1')
     }
+  })
+
+  it('spans grouped card headings across the grid', async () => {
+    const project = makeEntry({
+      path: '/vault/project.md',
+      filename: 'project.md',
+      title: 'Project Card',
+      isA: 'Project',
+    })
+    const { container } = render(
+      <BrowserView
+        displayMode="cards"
+        documentGroups={[{ key: 'type:Project', label: 'Project', entries: [project] }]}
+        folderChildren={[]}
+        groupBy="type"
+        typeEntryMap={{}}
+        onOpenEntry={vi.fn()}
+        onSelectFolder={vi.fn()}
+        query=""
+        renderItem={() => null}
+        searched={[project]}
+      />,
+    )
+
+    await waitFor(() => {
+      const groupHeading = container.querySelector('[data-browser-view-grid-heading="true"]')
+      expect(groupHeading?.closest('.browser-view-grid-item')).toHaveClass('browser-view-grid-item--group')
+    })
   })
 
   it('keeps the note-list search input full width and shows inline search controls while loading', async () => {

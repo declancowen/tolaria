@@ -101,6 +101,29 @@ vi.mock('react-virtuoso', () => ({
       )
     )
   },
+  VirtuosoGrid: ({ data, itemContent, components, context, itemClassName, listClassName }: {
+    data?: unknown[]
+    itemContent?: (index: number, item: unknown, context?: unknown) => ReactNode
+    components?: { Item?: ComponentType<Record<string, unknown>>; List?: ComponentType<Record<string, unknown>> }
+    context?: unknown
+    itemClassName?: string
+    listClassName?: string
+  }) => {
+    const Item = components?.Item ?? 'div'
+    const List = components?.List ?? 'div'
+    const resolvedData = data ?? []
+    const renderedIndexes = getVirtualizedIndexes(resolvedData.length)
+
+    return createElement(List, { className: listClassName, 'data-testid': 'virtuoso-grid-mock' },
+      renderedIndexes.map((index) =>
+        createElement(
+          Item,
+          { key: index, className: itemClassName, context, 'data-index': index },
+          itemContent?.(index, resolvedData[index], context),
+        )
+      )
+    )
+  },
   GroupedVirtuoso: ({ groupCounts, groupContent, itemContent }: {
     groupCounts: number[]
     groupContent: (index: number) => ReactNode

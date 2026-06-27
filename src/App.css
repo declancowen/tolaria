@@ -73,7 +73,7 @@ body.mac-chrome:not(.mac-chrome-fullscreen) .sidebar-title-bar {
   flex: 1;
 }
 
-.browser-view-grid-item:has([data-browser-view-grid-heading='true']) {
+.browser-view-grid-item--group {
   grid-column: 1 / -1;
 }
 

@@ -335,6 +335,7 @@ export function EditorRightPanel({
         <div className="flex min-h-0 flex-1 flex-col">
           <Inspector
             collapsed={false}
+            showLeftBorder={false}
             panelTabs={panelTabs}
             onToggle={onCloseRightPanel}
             entry={inspectorEntry}
