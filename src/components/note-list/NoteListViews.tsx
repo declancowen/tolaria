@@ -151,7 +151,7 @@ function TypePill({
 
   return (
     <span
-      className="inline-flex min-w-0 max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium"
+      className="inline-flex h-5 min-w-0 max-w-full items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium leading-none"
       style={{ background, color }}
     >
       {createElement(TypeIcon, { width: 12, height: 12, className: 'shrink-0' })}
@@ -229,14 +229,14 @@ function BrowserFolderItem({
       <Button
         type="button"
         variant="ghost"
-        className="h-auto min-h-0 min-w-0 items-start justify-start rounded-md border border-border bg-background p-3 text-left shadow-none hover:bg-muted"
+        className="h-auto min-h-0 w-full min-w-0 items-start justify-start overflow-hidden whitespace-normal rounded-md border border-border bg-background p-3 text-left shadow-none hover:bg-muted"
         onClick={openFolder}
       >
-        <div className="flex min-w-0 flex-col gap-3">
-          <Folder size={22} weight="fill" className="text-[var(--accent-blue)]" />
-          <div className="min-w-0">
+        <div className="flex h-full w-full min-w-0 flex-col">
+          <Folder size={18} weight="fill" className="text-[var(--accent-blue)]" />
+          <div className="mt-2 min-w-0">
             <div className="truncate text-[14px] font-medium text-foreground">{folder.name}</div>
-            <div className="mt-1 text-[12px] font-normal text-muted-foreground">
+            <div className="mt-1 line-clamp-2 min-h-10 text-[12px] font-normal leading-5 text-muted-foreground">
               {hasChildren ? `${folder.children.length}` : ''}
             </div>
           </div>
@@ -288,19 +288,22 @@ function BrowserEntryItem({
       <Button
         type="button"
         variant="ghost"
-        className="h-auto min-h-0 min-w-0 items-start justify-start rounded-md border border-border bg-background p-3 text-left shadow-none hover:bg-muted"
+        className="h-auto min-h-0 w-full min-w-0 items-start justify-start overflow-hidden whitespace-normal rounded-md border border-border bg-background p-3 text-left shadow-none hover:bg-muted"
         onClick={(event) => onOpenEntry(entry, event)}
       >
-        <div className="flex min-w-0 flex-col gap-3">
-          <FileText size={20} className="text-muted-foreground" />
-          <div className="min-w-0">
-            <div className="line-clamp-2 text-[14px] font-medium leading-5 text-foreground">{entry.title}</div>
-            <div className="mt-1 line-clamp-2 text-[12px] font-normal leading-5 text-muted-foreground">{subtitle}</div>
+        <div className="flex h-full w-full min-w-0 flex-col">
+          <FileText size={18} className="text-muted-foreground" />
+          <div className="mt-2 min-w-0">
+            <div className="truncate text-[14px] font-medium leading-5 text-foreground">{entry.title}</div>
+            <div className="mt-1 line-clamp-2 min-h-10 text-[12px] font-normal leading-5 text-muted-foreground">{subtitle}</div>
           </div>
-          <div className="flex max-w-full flex-wrap gap-1.5">
+          <div
+            className="mt-1 flex h-[46px] max-w-full flex-wrap content-end gap-1.5 overflow-hidden"
+            data-browser-card-pill-band="true"
+          >
             <TypePill entry={entry} typeEntryMap={typeEntryMap} />
             {tags.map((tag) => (
-              <span key={tag} className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-normal text-muted-foreground">{tag}</span>
+              <span key={tag} className="inline-flex h-5 max-w-[120px] items-center truncate rounded bg-muted px-1.5 py-0.5 text-[11px] font-normal leading-none text-muted-foreground">{tag}</span>
             ))}
           </div>
         </div>
@@ -379,29 +382,31 @@ export function BrowserView({
 
   if (displayMode === 'cards') {
     return (
-      <VirtuosoGrid
-        style={{ height: '100%' }}
-        data={browserItems}
-        context={{ items: browserItems }}
-        components={{ Item: BrowserGridItem }}
-        overscan={200}
-        listClassName="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] content-start gap-2 p-2"
-        itemClassName="browser-view-grid-item min-w-0"
-        computeItemKey={(_index, item) => item.key}
-        itemContent={(_index, item) => {
-          if (item.kind === 'folder') {
-            return <BrowserFolderItem folder={item.folder} displayMode={displayMode} onSelectFolder={onSelectFolder} />
-          }
-          if (item.kind === 'group') {
-            return (
-              <div data-browser-view-grid-heading="true">
-                <GroupHeading group={item.group} groupBy={groupBy} locale={locale} />
-              </div>
-            )
-          }
-          return <BrowserEntryItem entry={item.entry} displayMode={displayMode} typeEntryMap={typeEntryMap} onOpenEntry={onOpenEntry} />
-        }}
-      />
+      <div className="h-full pt-2" data-browser-card-grid-surface="true">
+        <VirtuosoGrid
+          style={{ height: '100%' }}
+          data={browserItems}
+          context={{ items: browserItems }}
+          components={{ Item: BrowserGridItem }}
+          overscan={200}
+          listClassName="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] content-start gap-2 px-2 pb-2"
+          itemClassName="browser-view-grid-item min-w-0 overflow-hidden"
+          computeItemKey={(_index, item) => item.key}
+          itemContent={(_index, item) => {
+            if (item.kind === 'folder') {
+              return <BrowserFolderItem folder={item.folder} displayMode={displayMode} onSelectFolder={onSelectFolder} />
+            }
+            if (item.kind === 'group') {
+              return (
+                <div data-browser-view-grid-heading="true">
+                  <GroupHeading group={item.group} groupBy={groupBy} locale={locale} />
+                </div>
+              )
+            }
+            return <BrowserEntryItem entry={item.entry} displayMode={displayMode} typeEntryMap={typeEntryMap} onOpenEntry={onOpenEntry} />
+          }}
+        />
+      </div>
     )
   }
 

@@ -57,11 +57,72 @@
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-27 13:36:18 BST |
-| **Total turns** | 7 |
+| **Last reviewed** | 2026-06-27 14:26:45 BST |
+| **Total turns** | 8 |
 | **Open findings** | 0 |
 | **Resolved findings** | 13 |
 | **Accepted findings** | 0 |
+
+## Turn 8 — 2026-06-27 14:26:45 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | 40ccc79f plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Reviewed the focused card-grid correction after visual iteration on card overflow, fixed card spacing, two-row pill behavior, and grid top inset.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** low — the runtime change is localized to the note-list card display mode and has a focused rendering regression test.
+**Change archetypes:** UI layout, virtualized grid, card overflow/clamping, regression coverage.
+**Intended change:** Restore card-mode visual behavior so cards keep bounded widths, text clamps predictably, pills occupy a controlled two-row band, and the top grid inset matches the side/gap spacing.
+**Intent vs actual:** The diff leaves list and rows paths untouched, constrains card content inside its grid cell, adds a reliable `pt-2` grid surface wrapper, and asserts those card/grid invariants in the existing rendering test.
+**Confidence:** high for the localized React layout and regression coverage; medium for pixel-perfect native parity until the fresh desktop build is manually opened.
+**Coverage note:** Focused rendering test now covers the card grid surface inset, grouped heading span, card overflow constraints, and two-row pill band. User visually confirmed the browser surface after the iteration.
+**Finding triage:** No new findings. The main reviewed bug classes were virtualized grid padding loss, card content overflow, card height drift, and extra visual pill rows.
+**Static/analyzer evidence:** TypeScript, ESLint, focused Vitest, whitespace, and demo-vault dirt checks passed. CodeScene MCP/CLI and Codacy CLI remained unavailable in this environment.
+**Architecture impact:** None. The change stays inside the existing note-list display-mode boundary and does not alter data, routing, persistence, or native commands.
+**Deep-review evidence:** Targeted correctness/safety pass checked card/list/rows separation, virtualized grid wrapper behavior, and item overflow. Maintainability/structure pass checked that layout-specific assertions remain in the focused rendering test and no shared button primitive was changed.
+**Bug classes / invariants checked:** card mode content cannot widen a virtualized grid cell; group headings still span the full grid row; card top inset matches grid side/gap padding; title/preview/pill rows clamp instead of creating variable-width rows; list and rows display modes keep their existing render paths.
+**Branch totality:** Rechecked the patch against Turn 4 virtualized card-grid heading handling and Turn 7 browser/editor surface assumptions.
+**Sibling closure:** Card folder items and card entry items were both constrained; rows/list paths were intentionally left untouched.
+**Remediation impact surface:** Local to `NoteListViews` card mode and its rendering test. No localization, native, model, updater, vault, or persistence code changed.
+**Residual risk / unknowns:** Automated browser screenshot could not reuse the user's loaded vault state, so native/browser visual proof relies on the live local tab inspection and the upcoming desktop build.
+
+### Validation
+
+- `pnpm exec vitest run src/components/NoteList.rendering.test.tsx --reporter=dot` — passed, 60 tests
+- `pnpm exec tsc --noEmit` — passed
+- `pnpm lint` — passed
+- `git diff --check` — passed
+- `git status --short -- demo-vault demo-vault-v2` — clean
+- CodeScene file/project health — not run; no CodeScene MCP tool exposed and `cs` CLI unavailable
+- Codacy scan — not run; no Codacy MCP tool exposed and `.codacy/cli.sh` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `src/components/note-list/NoteListViews.tsx`, changed rendering-test block, prior review ledger for note-list/card-grid hotspots.
+- **Prior open findings rechecked:** none open from Turns 1-7.
+- **Prior resolved/adjacent areas revalidated:** Turn 4 group-heading full-row behavior remains asserted; Turn 7 browser/editor separation unaffected because only browser card rendering changed.
+- **Hotspots or sibling paths revisited:** entry cards, folder cards, grouped card headings, card grid top inset, and list/rows render branches.
+- **Dependency/adjacent surfaces revalidated:** TypeScript, ESLint, focused Vitest, whitespace, and demo-vault hygiene.
+- **Why this is enough:** The patch is a focused card-mode layout correction, and the risky invariants are now covered by the closest component test plus live visual feedback.
+
+### Challenger pass
+
+- `not needed` — Low-risk localized UI patch. The weakest assumption is native WKWebView matching Chromium grid behavior; the fresh Apple Silicon desktop build will be created next for manual inspection.
+
+### Resolved / Carried / New findings
+
+No open findings.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** create and inspect a fresh Apple Silicon desktop build.
+3. **Patterns noticed:** virtualized grid spacing is more reliable when the top inset lives on a wrapping surface and horizontal/bottom spacing stays on the list grid.
+4. **Suggested approach:** keep future card-grid spacing changes covered by the same rendering test before rebuilding native.
+5. **Architecture transition:** none.
+6. **Defer on purpose:** CodeScene and Codacy remain deferred because their local/MCP entrypoints are unavailable here.
 
 ## Turn 7 — 2026-06-27 13:36:18 BST
 

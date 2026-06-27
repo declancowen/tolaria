@@ -593,8 +593,14 @@ describe('NoteList rendering', () => {
     )
 
     await waitFor(() => {
+      expect(container.querySelector('[data-browser-card-grid-surface="true"]')).toHaveClass('pt-2')
       const groupHeading = container.querySelector('[data-browser-view-grid-heading="true"]')
       expect(groupHeading?.closest('.browser-view-grid-item')).toHaveClass('browser-view-grid-item--group')
+      const cardButton = screen.getByText('Project Card').closest('button')
+      expect(cardButton).toHaveClass('h-auto', 'min-h-0', 'w-full', 'overflow-hidden', 'whitespace-normal')
+      expect(cardButton?.firstElementChild).toHaveClass('w-full', 'min-w-0')
+      const pillBand = cardButton?.querySelector('[data-browser-card-pill-band="true"]')
+      expect(pillBand).toHaveClass('h-[46px]', 'content-end', 'overflow-hidden')
     })
   })
 
