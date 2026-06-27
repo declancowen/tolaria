@@ -53,11 +53,71 @@
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-27 10:12:26 BST |
-| **Total turns** | 4 |
+| **Last reviewed** | 2026-06-27 10:33:45 BST |
+| **Total turns** | 5 |
 | **Open findings** | 0 |
-| **Resolved findings** | 10 |
+| **Resolved findings** | 11 |
 | **Accepted findings** | 0 |
+
+## Turn 5 — 2026-06-27 10:33:45 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | 56dde097 plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Re-reviewed the branch after the push gate exposed a Rust clippy failure in the transcription model catalog helper.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** low — the fix is limited to catalog construction shape and does not change model IDs, titles, URLs, paths, install state, or runtime behavior.
+**Change archetypes:** native lint-gate cleanup, transcription model catalog maintainability.
+**Intended change:** Remove the clippy `too_many_arguments` failure without weakening the hook or changing transcription behavior.
+**Intent vs actual:** The helper now accepts a named `ModelDefinitionSeed`, preserving the existing model metadata while making field ownership explicit and keeping the push gate intact.
+**Confidence:** high for the native change; medium for the full branch until the push gate and Apple Silicon build complete again.
+**Coverage note:** Native formatter and clippy passed for the touched Rust file path. Broader validation remains covered by Turn 4 and the retrying pre-push gate.
+**Finding triage:** One push-gate finding was live and resolved. No additional issues found in the model catalog path.
+**Static/analyzer evidence:** `cargo fmt --manifest-path src-tauri/Cargo.toml --check` and `cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings` passed. CodeScene MCP/CLI and Codacy CLI remained unavailable.
+**Architecture impact:** None. The model catalog remains the single source for downloadable transcription model metadata.
+**Deep-review evidence:** Correctness/safety pass confirmed no metadata values changed. Maintainability/structure pass confirmed the replacement removes positional argument drift and keeps future model additions readable.
+**Bug classes / invariants checked:** Transcription model identity, engine/language metadata, artifact URLs, model size, and install artifact list are preserved.
+**Branch totality:** Rechecked this native gate fix against the Turn 2 transcription/download work and Turn 3 async download/runtime changes.
+**Sibling closure:** The sibling catalog entries use the same named seed shape, so the previous positional-argument issue is removed from all current models.
+**Remediation impact surface:** Local to `src-tauri/src/transcription_models.rs`; no command signatures, serialized responses, settings keys, or frontend model consumers changed.
+**Residual risk / unknowns:** CodeScene and Codacy are still not runnable locally in this environment. Final confidence depends on the full pre-push gate and packaged app build.
+
+### Validation
+
+- `cargo fmt --manifest-path src-tauri/Cargo.toml --check` — passed
+- `cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings` — passed
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `src-tauri/src/transcription_models.rs` and the prior transcription review scope.
+- **Prior open findings rechecked:** none open from Turns 1-4.
+- **Prior resolved/adjacent areas revalidated:** model catalog naming, download/install status construction, and async transcription model command assumptions.
+- **Hotspots or sibling paths revisited:** all current model catalog entries.
+- **Dependency/adjacent surfaces revalidated:** native formatter and clippy gate.
+- **Why this is enough:** The failed gate was isolated to construction shape in one helper; the fix preserves all catalog values and directly satisfies the failing native check.
+
+### Challenger pass
+
+- `done` — Assumed a cleanup could accidentally change user-visible model metadata; diff review confirmed the same model IDs, names, engine, language mode, license, sizes, descriptions, and artifact URLs are retained.
+
+### Resolved / Carried / New findings
+
+#### B5-1 — Resolved — Low — `src-tauri/src/transcription_models.rs`
+
+The native model catalog used an eight-argument helper, which tripped the push gate's clippy `too_many_arguments` rule and made future model metadata edits easy to mis-order.
+
+Resolution: replaced the positional helper parameters with a named `ModelDefinitionSeed` while preserving all existing catalog values.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** retry the full pre-push gate and run the requested Apple Silicon build.
+3. **Patterns noticed:** named seed/config structs are a better fit for catalog metadata than positional helper calls.
+4. **Suggested approach:** keep future model additions inside the same named seed shape unless the catalog moves to external data.
+5. **Architecture transition:** none.
+6. **Defer on purpose:** CodeScene and Codacy remain deferred because their local/MCP entrypoints are unavailable here.
 
 ## Turn 4 — 2026-06-27 10:12:26 BST
 

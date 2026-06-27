@@ -47,69 +47,71 @@ fn artifact(filename: &str, url: &str) -> TranscriptionModelArtifact {
     }
 }
 
-fn definition(
-    id: &str,
-    title: &str,
-    engine: &str,
-    language_mode: &str,
-    license: &str,
-    size_mb: u32,
-    description: &str,
+struct ModelDefinitionSeed {
     artifacts: Vec<TranscriptionModelArtifact>,
-) -> TranscriptionModelDefinition {
+    description: &'static str,
+    engine: &'static str,
+    id: &'static str,
+    language_mode: &'static str,
+    license: &'static str,
+    size_mb: u32,
+    title: &'static str,
+}
+
+fn definition(seed: ModelDefinitionSeed) -> TranscriptionModelDefinition {
     TranscriptionModelDefinition {
-        artifacts,
-        description: description.to_string(),
-        engine: engine.to_string(),
-        id: id.to_string(),
-        language_mode: language_mode.to_string(),
-        license: license.to_string(),
-        size_mb,
-        title: title.to_string(),
+        artifacts: seed.artifacts,
+        description: seed.description.to_string(),
+        engine: seed.engine.to_string(),
+        id: seed.id.to_string(),
+        language_mode: seed.language_mode.to_string(),
+        license: seed.license.to_string(),
+        size_mb: seed.size_mb,
+        title: seed.title.to_string(),
     }
 }
 
 fn model_catalog() -> Vec<TranscriptionModelDefinition> {
     vec![
-        definition(
-            "whisper-tiny-en",
-            "Whisper Tiny",
-            "whisper",
-            "english",
-            "MIT",
-            75,
-            "Fastest option for English dictation.",
-            vec![artifact(
+        definition(ModelDefinitionSeed {
+            id: "whisper-tiny-en",
+            title: "Whisper Tiny",
+            engine: "whisper",
+            language_mode: "english",
+            license: "MIT",
+            size_mb: 75,
+            description: "Fastest option for English dictation.",
+            artifacts: vec![artifact(
                 "ggml-tiny.en.bin",
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.en.bin",
             )],
-        ),
-        definition(
-            "whisper-base-en",
-            "Whisper Base",
-            "whisper",
-            "english",
-            "MIT",
-            142,
-            "Balanced English transcription for notes and dictation.",
-            vec![artifact(
+        }),
+        definition(ModelDefinitionSeed {
+            id: "whisper-base-en",
+            title: "Whisper Base",
+            engine: "whisper",
+            language_mode: "english",
+            license: "MIT",
+            size_mb: 142,
+            description: "Balanced English transcription for notes and dictation.",
+            artifacts: vec![artifact(
                 "ggml-base.en.bin",
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin",
             )],
-        ),
-        definition(
-            "whisper-base-multilingual",
-            "Whisper Base",
-            "whisper",
-            "multilingual",
-            "MIT",
-            142,
-            "Balanced transcription across multiple languages.",
-            vec![artifact(
+        }),
+        definition(ModelDefinitionSeed {
+            id: "whisper-base-multilingual",
+            title: "Whisper Base",
+            engine: "whisper",
+            language_mode: "multilingual",
+            license: "MIT",
+            size_mb: 142,
+            description: "Balanced transcription across multiple languages.",
+            artifacts: vec![artifact(
                 "ggml-base.bin",
                 "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
             )],
-        ),
+        }),
     ]
 }
 
