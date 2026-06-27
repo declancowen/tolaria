@@ -370,10 +370,11 @@ function useReplaceActiveTabWithQueuedDiff({
   queuePendingDiff: (path: string, commitHash?: string) => void
 }) {
   return useCallback((entry: VaultEntry) => {
-    onReplaceActiveTab(entry)
+    const replaceResult = onReplaceActiveTab(entry)
     if (effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'changes') {
       queuePendingDiff(entry.path)
     }
+    return replaceResult
   }, [effectiveSelection, onReplaceActiveTab, queuePendingDiff])
 }
 

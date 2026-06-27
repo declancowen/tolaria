@@ -237,6 +237,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   const [selection, setSelection] = useState<SidebarSelection>(DEFAULT_SELECTION)
   const [mainSurfaceMode, setMainSurfaceMode] = useState<MainSurfaceMode>('browser')
   const [pendingMainSurfaceNotePath, setPendingMainSurfaceNotePath] = useState<string | null>(null)
+  const [mainSurfaceNoteSource, setMainSurfaceNoteSource] = useState<{ path: string; surfaceKey: string } | null>(null)
   const [noteListDisplayMode, setNoteListDisplayMode] = useState<NoteListDisplayMode>('list')
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>('open')
   const [pendingNoteListPdfExportPath, setPendingNoteListPdfExportPath] = useState<string | null>(null)
@@ -600,6 +601,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     if (!noteWindowParams && !aiWorkspaceWindow && resolvedPath) vault.markVaultUnavailable(resolvedPath)
   }, [aiWorkspaceWindow, noteWindowParams, resolvedPath, vault])
   const handleOpenCreatedNote = useCallback((entry: VaultEntry) => {
+    setMainSurfaceNoteSource(null)
     setMainSurfaceMode('editor')
     const requestFocus = () => {
       window.dispatchEvent(new CustomEvent('laputa:focus-editor', {
@@ -646,18 +648,25 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   } = notes
   const noteActiveTabPath = notes.activeTabPath
   const noteActiveTabPathRef = notes.activeTabPathRef
+  const currentMainBrowserSurfaceKey = mainSurfaceKeyForSelection(effectiveSelection, noteListDisplayMode)
+  const trackMainSurfaceNoteSource = useCallback((entry: VaultEntry) => {
+    const surfaceKey = mainSurfaceMode === 'browser' ? currentMainBrowserSurfaceKey : null
+    setMainSurfaceNoteSource(surfaceKey ? { path: entry.path, surfaceKey } : null)
+  }, [currentMainBrowserSurfaceKey, mainSurfaceMode])
   const handleSelectNoteInMainSurface = useCallback((entry: VaultEntry) => {
+    trackMainSurfaceNoteSource(entry)
     setPendingMainSurfaceNotePath(entry.path)
     setMainSurfaceMode('editor')
     void handleSelectNote(entry).finally(() => {
       setPendingMainSurfaceNotePath((pendingPath) => pendingPath === entry.path ? null : pendingPath)
     })
-  }, [handleSelectNote])
+  }, [handleSelectNote, trackMainSurfaceNoteSource])
   const handleSelectMainSurfaceFromNavigation = useCallback((surfaceKey: string) => {
     const nextState = mainSurfaceStateFromKey(surfaceKey)
     if (!nextState) return
 
     setPendingMainSurfaceNotePath(null)
+    setMainSurfaceNoteSource(null)
     neighborhoodHistoryRef.current = []
     selectionRef.current = nextState.selection
     setSelection(nextState.selection)
@@ -768,19 +777,22 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     })
   }, [visibleEntries, notes.setTabs]) // eslint-disable-line react-hooks/exhaustive-deps -- notes.setTabs is stable (useState setter)
 
-  const activeMainSurfaceKey = mainSurfaceMode === 'browser'
-    ? mainSurfaceKeyForSelection(effectiveSelection, noteListDisplayMode)
+  const activeMainSurfaceKey = mainSurfaceMode === 'browser' ? currentMainBrowserSurfaceKey : null
+  const activeNoteSourceSurfaceKey = mainSurfaceNoteSource?.path === (pendingMainSurfaceNotePath ?? notes.activeTabPath)
+    ? mainSurfaceNoteSource.surfaceKey
     : null
   const { handleGoBack, handleGoForward, canGoBack, canGoForward, entriesByPath } = useAppNavigation({
     entries: visibleEntries,
     activeSurfaceKey: activeMainSurfaceKey,
     activeTabPath: notes.activeTabPath,
     pendingActiveTabPath: mainSurfaceMode === 'editor' ? pendingMainSurfaceNotePath : null,
+    activeNoteSourceSurfaceKey,
     onSelectNote: handleSelectNoteInMainSurface,
     onSelectSurface: handleSelectMainSurfaceFromNavigation,
   })
 
   const handleOpenFavorite = useCallback(async (entry: VaultEntry) => {
+    setMainSurfaceNoteSource(null)
     setMainSurfaceMode('editor')
     await handleReplaceActiveTab(entry)
     handleEnterNeighborhood(entry)
@@ -1051,9 +1063,13 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     visibleEntries,
   })
   const handleReplaceActiveTabInMainSurface = useCallback((entry: VaultEntry) => {
+    trackMainSurfaceNoteSource(entry)
+    setPendingMainSurfaceNotePath(entry.path)
     setMainSurfaceMode('editor')
-    handleReplaceActiveTabWithQueuedDiff(entry)
-  }, [handleReplaceActiveTabWithQueuedDiff])
+    void Promise.resolve(handleReplaceActiveTabWithQueuedDiff(entry)).finally(() => {
+      setPendingMainSurfaceNotePath((pendingPath) => pendingPath === entry.path ? null : pendingPath)
+    })
+  }, [handleReplaceActiveTabWithQueuedDiff, trackMainSurfaceNoteSource])
   const handleEnterNeighborhoodInMainSurface = useCallback((entry: VaultEntry) => {
     handleEnterNeighborhood(entry)
     setMainSurfaceMode('browser')

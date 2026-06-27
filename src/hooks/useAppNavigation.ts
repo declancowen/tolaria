@@ -7,13 +7,14 @@ interface UseAppNavigationParams {
   entries: VaultEntry[]
   activeTabPath: string | null
   pendingActiveTabPath?: string | null
+  activeNoteSourceSurfaceKey?: string | null
   activeSurfaceKey?: string | null
   onSelectNote: (entry: VaultEntry) => void
   onSelectSurface?: (surfaceKey: string) => void
 }
 
 type NavigationTarget =
-  | { kind: 'note'; path: string }
+  | { kind: 'note'; path: string; sourceSurfaceKey?: string }
   | { kind: 'surface'; key: string }
 
 function encodeNavigationTarget(target: NavigationTarget): string {
@@ -25,7 +26,10 @@ function decodeNavigationTarget(raw: string): NavigationTarget | null {
     const parsed: unknown = JSON.parse(raw)
     if (!parsed || typeof parsed !== 'object') return { kind: 'note', path: raw }
     if ('kind' in parsed && parsed.kind === 'note' && 'path' in parsed && typeof parsed.path === 'string') {
-      return { kind: 'note', path: parsed.path }
+      const sourceSurfaceKey = 'sourceSurfaceKey' in parsed && typeof parsed.sourceSurfaceKey === 'string'
+        ? parsed.sourceSurfaceKey
+        : undefined
+      return { kind: 'note', path: parsed.path, sourceSurfaceKey }
     }
     if ('kind' in parsed && parsed.kind === 'surface' && 'key' in parsed && typeof parsed.key === 'string') {
       return { kind: 'surface', key: parsed.key }
@@ -40,10 +44,19 @@ function activeNavigationKey(
   activeSurfaceKey: string | null | undefined,
   activeTabPath: string | null,
   pendingActiveTabPath: string | null | undefined,
+  activeNoteSourceSurfaceKey: string | null | undefined,
 ): string | null {
   if (activeSurfaceKey) return encodeNavigationTarget({ kind: 'surface', key: activeSurfaceKey })
-  if (pendingActiveTabPath) return encodeNavigationTarget({ kind: 'note', path: pendingActiveTabPath })
-  if (activeTabPath) return encodeNavigationTarget({ kind: 'note', path: activeTabPath })
+  if (pendingActiveTabPath) return encodeNavigationTarget({
+    kind: 'note',
+    path: pendingActiveTabPath,
+    sourceSurfaceKey: activeNoteSourceSurfaceKey ?? undefined,
+  })
+  if (activeTabPath) return encodeNavigationTarget({
+    kind: 'note',
+    path: activeTabPath,
+    sourceSurfaceKey: activeNoteSourceSurfaceKey ?? undefined,
+  })
   return null
 }
 
@@ -58,11 +71,12 @@ export function useAppNavigation({
   entries,
   activeTabPath,
   pendingActiveTabPath,
+  activeNoteSourceSurfaceKey,
   onSelectNote,
   onSelectSurface,
 }: UseAppNavigationParams) {
   const navHistory = useNavigationHistory()
-  const currentNavigationKey = activeNavigationKey(activeSurfaceKey, activeTabPath, pendingActiveTabPath)
+  const currentNavigationKey = activeNavigationKey(activeSurfaceKey, activeTabPath, pendingActiveTabPath, activeNoteSourceSurfaceKey)
 
   // Push to navigation history whenever the active note or browser surface changes.
   const navFromHistoryRef = useRef(false)
@@ -100,8 +114,21 @@ export function useAppNavigation({
   }, [entries, onSelectNote, onSelectSurface])
 
   const handleGoBack = useCallback(() => {
+    const currentTarget = currentNavigationKey ? decodeNavigationTarget(currentNavigationKey) : null
+    if (currentTarget?.kind === 'note' && currentTarget.sourceSurfaceKey) {
+      const surfaceTarget = navHistory.goBack((raw) => {
+        const target = decodeNavigationTarget(raw)
+        return target?.kind === 'surface'
+          && target.key === currentTarget.sourceSurfaceKey
+          && isNavigationTargetValid(raw)
+      })
+      if (surfaceTarget) {
+        navigateToHistoryTarget(surfaceTarget)
+        return
+      }
+    }
     navigateToHistoryTarget(navHistory.goBack(isNavigationTargetValid))
-  }, [isNavigationTargetValid, navHistory, navigateToHistoryTarget])
+  }, [currentNavigationKey, isNavigationTargetValid, navHistory, navigateToHistoryTarget])
 
   const handleGoForward = useCallback(() => {
     navigateToHistoryTarget(navHistory.goForward(isNavigationTargetValid))

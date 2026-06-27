@@ -18,14 +18,16 @@ describe('useAppNavigation', () => {
     entries?: VaultEntry[]
     activeTabPath?: string | null
     pendingActiveTabPath?: string | null
+    activeNoteSourceSurfaceKey?: string | null
     activeSurfaceKey?: string | null
   } = {}) {
     const entries = overrides.entries ?? [makeEntry('/a.md'), makeEntry('/b.md'), makeEntry('/c.md')]
     const activeTabPath = overrides.activeTabPath ?? null
     const pendingActiveTabPath = overrides.pendingActiveTabPath ?? null
+    const activeNoteSourceSurfaceKey = overrides.activeNoteSourceSurfaceKey ?? null
     const activeSurfaceKey = overrides.activeSurfaceKey ?? null
     return renderHook(() =>
-      useAppNavigation({ entries, activeTabPath, pendingActiveTabPath, activeSurfaceKey, onSelectNote }),
+      useAppNavigation({ entries, activeTabPath, pendingActiveTabPath, activeNoteSourceSurfaceKey, activeSurfaceKey, onSelectNote }),
     )
   }
 
@@ -132,27 +134,123 @@ describe('useAppNavigation', () => {
       expect(onSelectNote).toHaveBeenCalledWith(entries[0])
     })
 
-    it('keeps Back targeting the browser surface when a new document opens from the browser while the previous editor tab is still active', () => {
+    it('keeps Back targeting the source browser surface when older documents remain behind it', () => {
       const entries = [makeEntry('/a.md'), makeEntry('/b.md')]
       const onSelectSurface = vi.fn()
       const { result, rerender } = renderHook(
-        ({ activeSurfaceKey, activeTabPath, pendingActiveTabPath }) =>
-          useAppNavigation({ entries, activeSurfaceKey, activeTabPath, pendingActiveTabPath, onSelectNote, onSelectSurface }),
+        ({ activeSurfaceKey, activeTabPath, pendingActiveTabPath, activeNoteSourceSurfaceKey }) =>
+          useAppNavigation({
+            entries,
+            activeSurfaceKey,
+            activeTabPath,
+            pendingActiveTabPath,
+            activeNoteSourceSurfaceKey,
+            onSelectNote,
+            onSelectSurface,
+          }),
         {
           initialProps: {
             activeSurfaceKey: 'filter:inbox' as string | null,
             activeTabPath: null as string | null,
             pendingActiveTabPath: null as string | null,
+            activeNoteSourceSurfaceKey: null as string | null,
           },
         },
       )
 
-      rerender({ activeSurfaceKey: null, activeTabPath: null, pendingActiveTabPath: '/a.md' })
-      rerender({ activeSurfaceKey: null, activeTabPath: '/a.md', pendingActiveTabPath: null })
+      rerender({
+        activeSurfaceKey: null,
+        activeTabPath: null,
+        pendingActiveTabPath: '/a.md',
+        activeNoteSourceSurfaceKey: 'filter:inbox',
+      })
+      rerender({
+        activeSurfaceKey: null,
+        activeTabPath: '/a.md',
+        pendingActiveTabPath: null,
+        activeNoteSourceSurfaceKey: 'filter:inbox',
+      })
       act(() => { result.current.handleGoBack() })
-      rerender({ activeSurfaceKey: 'filter:inbox', activeTabPath: '/a.md', pendingActiveTabPath: null })
-      rerender({ activeSurfaceKey: null, activeTabPath: '/a.md', pendingActiveTabPath: '/b.md' })
-      rerender({ activeSurfaceKey: null, activeTabPath: '/b.md', pendingActiveTabPath: null })
+      rerender({
+        activeSurfaceKey: 'filter:inbox',
+        activeTabPath: '/a.md',
+        pendingActiveTabPath: null,
+        activeNoteSourceSurfaceKey: null,
+      })
+      rerender({
+        activeSurfaceKey: null,
+        activeTabPath: '/a.md',
+        pendingActiveTabPath: '/b.md',
+        activeNoteSourceSurfaceKey: 'filter:inbox',
+      })
+      rerender({
+        activeSurfaceKey: null,
+        activeTabPath: '/b.md',
+        pendingActiveTabPath: null,
+        activeNoteSourceSurfaceKey: 'filter:inbox',
+      })
+
+      act(() => { result.current.handleGoBack() })
+
+      expect(onSelectSurface).toHaveBeenLastCalledWith('filter:inbox')
+      expect(onSelectNote).not.toHaveBeenCalledWith(entries[0])
+    })
+
+    it('skips a stale active document recorded during a replace transition', () => {
+      const entries = [makeEntry('/a.md'), makeEntry('/b.md')]
+      const onSelectSurface = vi.fn()
+      const { result, rerender } = renderHook(
+        ({ activeSurfaceKey, activeTabPath, pendingActiveTabPath, activeNoteSourceSurfaceKey }) =>
+          useAppNavigation({
+            entries,
+            activeSurfaceKey,
+            activeTabPath,
+            pendingActiveTabPath,
+            activeNoteSourceSurfaceKey,
+            onSelectNote,
+            onSelectSurface,
+          }),
+        {
+          initialProps: {
+            activeSurfaceKey: 'filter:inbox' as string | null,
+            activeTabPath: null as string | null,
+            pendingActiveTabPath: null as string | null,
+            activeNoteSourceSurfaceKey: null as string | null,
+          },
+        },
+      )
+
+      rerender({
+        activeSurfaceKey: null,
+        activeTabPath: null,
+        pendingActiveTabPath: '/a.md',
+        activeNoteSourceSurfaceKey: 'filter:inbox',
+      })
+      rerender({
+        activeSurfaceKey: null,
+        activeTabPath: '/a.md',
+        pendingActiveTabPath: null,
+        activeNoteSourceSurfaceKey: 'filter:inbox',
+      })
+      act(() => { result.current.handleGoBack() })
+      rerender({
+        activeSurfaceKey: 'filter:inbox',
+        activeTabPath: '/a.md',
+        pendingActiveTabPath: null,
+        activeNoteSourceSurfaceKey: null,
+      })
+      rerender({
+        activeSurfaceKey: null,
+        activeTabPath: '/a.md',
+        pendingActiveTabPath: null,
+        activeNoteSourceSurfaceKey: null,
+      })
+      rerender({
+        activeSurfaceKey: null,
+        activeTabPath: '/b.md',
+        pendingActiveTabPath: null,
+        activeNoteSourceSurfaceKey: 'filter:inbox',
+      })
 
       act(() => { result.current.handleGoBack() })
 

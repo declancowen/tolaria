@@ -12,6 +12,7 @@
 ## Scope
 
 - `src/App.tsx` — added Turn 1
+- `src/hooks/useAppNavigation.ts`, `src/hooks/useAppNavigation.test.ts`, and `src/hooks/useGitFileWorkflows.ts` — added Turn 10
 - `src/components/note-list/*` — added Turn 1
 - `src/components/EditorRightPanel.tsx` — added Turn 1
 - `src/components/AiWorkspaceSideHeader.tsx` — added Turn 1
@@ -51,17 +52,87 @@
 - virtualized card-grid group heading span/alignment — added Turn 4
 - created-note browser-to-editor handoff and title-focus ownership — added Turn 6
 - smoke-test note switching under the two-column browser/editor contract — added Turn 7
+- browser-surface Back behavior when list/grid opens replace the active editor tab — added Turn 10
 
 ## Review status
 
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-27 14:34:17 BST |
-| **Total turns** | 9 |
+| **Last reviewed** | 2026-06-27 14:52:12 BST |
+| **Total turns** | 10 |
 | **Open findings** | 0 |
 | **Resolved findings** | 13 |
 | **Accepted findings** | 0 |
+
+## Turn 10 — 2026-06-27 14:52:12 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | 3edc38e1 plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Re-reviewed and fixed the user-caught Back navigation escape where opening another document from the browser/grid surface could still return to the previously hidden document instead of the document list.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** medium — the runtime change touches shared browser/editor history state and fixes an issue that escaped the prior local review.
+**Change archetypes:** escaped user finding, browser/editor navigation, async replace-tab transition, history stack.
+**Intended change:** Back from a document opened by any main browser/list/grid surface must return to the source browser surface, even if an older editor document remains behind that surface in history.
+**Intent vs actual:** `App.tsx` now records the source browser surface for browser-origin document opens, marks replace-tab opens as pending until the new document open settles, and clears source metadata for created/favorite/non-browser opens. `useAppNavigation` stores that source on note history entries and prefers it over stale older document entries when going Back.
+**External finding import:**
+
+| Source | Finding | Current status | Bug class | Missed invariant/variant | Action |
+|--------|---------|----------------|-----------|--------------------------|--------|
+| User live QA | Back sometimes returned to the previous document instead of the document list after opening a second document from grid/list | fixed | Variant State, Lifecycle And Transient Containers, Semantic Regression | replace-tab path briefly retained the old active document while browser surface was the intended source | fixed with source-surface history metadata plus pending replace target |
+
+**Escape learning:** The failed mechanism was acquisition of history state from a stale retained editor tab during a browser-to-editor transition. The prior proof tested pending note selection but did not attack the replace-active-tab acquisition mode used by list/grid clicks.
+**Confidence:** high for the shared Back handler and list/grid replace path; medium for native gesture feel until the rebuilt desktop app is exercised.
+**Coverage note:** Added/updated focused hook regressions for both the normal pending source-surface path and a stale active-document replace transition. The note-list rendering regression was rerun to protect the grid work.
+**Finding triage:** No open findings after the patch. The live user finding is fixed in current tree.
+**Static/analyzer evidence:** TypeScript, ESLint, focused Vitest, whitespace, and demo-vault dirt checks passed. CodeScene MCP/CLI and Codacy CLI remained unavailable in this environment.
+**Architecture impact:** Low. Navigation ownership remains in `useAppNavigation`; `App.tsx` only supplies transition/source metadata. No vault, persistence, native, markdown, or route contract changed.
+**Deep-review evidence:** Correctness/safety pass checked list/grid click, replace-tab async transition, Back/Forward stack truncation, and browser-source preference. Maintainability pass checked that history rules stay centralized in `useAppNavigation` and the git diff wrapper only returns the replace operation it already started.
+**Bug classes / invariants checked:** browser-surface source is preserved across document opens; pending replacement prevents stale active document acquisition; stale retained documents behind a browser surface are skipped on Back; created/favorite/editor-origin opens do not inherit browser-source behavior.
+**Branch totality:** Rechecked against Turns 7-9 browser/editor and grid-surface assumptions. The Turn 9 all-clear was insufficient because it did not include the list/grid replace-active-tab acquisition path.
+**Sibling closure:** Mouse click, keyboard open in the list, and neighborhood open all route through `onReplaceActiveTab` from the note-list interaction layer. Toolbar, sidebar, gesture, and keyboard Back all share `useAppNavigation`.
+**Remediation impact surface:** `App.tsx`, `useAppNavigation`, `useGitFileWorkflows`, and navigation hook tests. No localization or user-facing copy changed.
+**Residual risk / unknowns:** Full native manual QA remains after the Apple Silicon build, especially trackpad/mouse Back/Forward feel.
+
+### Validation
+
+- `pnpm exec vitest run src/hooks/useAppNavigation.test.ts --reporter=dot` — passed, 9 tests
+- `pnpm exec vitest run src/components/NoteList.rendering.test.tsx --reporter=dot` — passed, 60 tests
+- `pnpm exec tsc --noEmit` — passed
+- `pnpm lint` — passed
+- `git diff --check` — passed
+- `git status --short -- demo-vault demo-vault-v2` — clean
+- CodeScene file/project health — not run; no CodeScene MCP tool exposed and `cs` CLI unavailable
+- Codacy scan — not run; no Codacy MCP tool exposed and `.codacy/cli.sh` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `useAppNavigation`, `useNavigationHistory`, `App.tsx`, note-list interactions, `useGitFileWorkflows`, keyboard navigation, and prior review turns.
+- **Prior open findings rechecked:** none open from Turns 1-9.
+- **Prior resolved/adjacent areas revalidated:** Turn 8 grid/list surface remains covered; Turn 9 navigation fix is strengthened rather than replaced.
+- **Hotspots or sibling paths revisited:** note-list mouse open, keyboard open, replacement flow, source-surface encoding, Back/Forward handlers, and native gesture entrypoint through the shared hook.
+- **Dependency/adjacent surfaces revalidated:** TypeScript, ESLint, focused Vitest, whitespace, and demo-vault hygiene.
+- **Why this is enough:** The missed class was stale state acquisition during replace-tab transition, and the current tests now cover both the intended pending route and the stale retained-document variant.
+
+### Challenger pass
+
+- **Weakest assumption attacked:** a stale active document can still be recorded between returning to the browser and completing a second replace. The new second regression explicitly pushes that stale state and verifies Back still returns to the source browser surface.
+
+### Resolved / Carried / New findings
+
+No open findings.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** commit the navigation correction and create a fresh Apple Silicon desktop build.
+3. **Patterns noticed:** browser/editor history must carry source-surface intent, not infer intent only from the currently active editor tab.
+4. **Suggested approach:** keep future history changes tested with stale retained-state variants, especially when a browser surface hides but does not close the editor tab.
+5. **Architecture transition:** none.
+6. **Defer on purpose:** CodeScene and Codacy remain deferred because their local/MCP entrypoints are unavailable here.
 
 ## Turn 9 — 2026-06-27 14:34:17 BST
 
