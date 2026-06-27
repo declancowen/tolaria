@@ -40,8 +40,21 @@ function collectReactUpdateLoopErrors(page: Page): string[] {
   return errors
 }
 
-async function openNote(page: Page, title: string) {
+async function revealNoteList(page: Page) {
   const noteList = page.locator('[data-testid="note-list-container"]')
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (await noteList.isVisible()) return noteList
+
+    const backButton = page.getByRole('button', { name: 'Go Back' }).first()
+    await expect(backButton).toBeEnabled({ timeout: 5_000 })
+    await backButton.click()
+  }
+  await expect(noteList).toBeVisible({ timeout: 5_000 })
+  return noteList
+}
+
+async function openNote(page: Page, title: string) {
+  const noteList = await revealNoteList(page)
   await noteList.getByText(title, { exact: true }).click()
 }
 
@@ -223,7 +236,6 @@ test('@smoke switching notes during a slow rich-editor save writes once and open
   const errors = collectReactUpdateLoopErrors(page)
   const noteBPath = path.join(tempVaultDir, 'note', 'note-b.md')
   const appendedText = `Slow rich save before switch ${Date.now()}`
-  const noteList = page.locator('[data-testid="note-list-container"]')
 
   await installDelayedSaveProbe(page)
   await openNote(page, 'Note B')
@@ -236,8 +248,8 @@ test('@smoke switching notes during a slow rich-editor save writes once and open
   await triggerMenuCommand(page, 'file-save')
   await expect.poll(() => delayedSaveCount(page), { timeout: 5_000 }).toBe(1)
 
-  await noteList.getByText('Alpha Project', { exact: true }).click()
-  await noteList.getByText('Note C', { exact: true }).click()
+  await openNote(page, 'Alpha Project')
+  await openNote(page, 'Note C')
 
   await expect.poll(() => delayedSaveCount(page), { timeout: 5_000 }).toBe(1)
   await releaseDelayedSave(page)

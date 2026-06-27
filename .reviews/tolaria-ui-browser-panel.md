@@ -30,6 +30,7 @@
 - live transcription cleanup in `src/components/RecordingTranscriptBlock.tsx`, `src/utils/transcriptionRuntime.ts`, native transcription commands, and persistent dictation toast wiring — added Turn 3
 - `src/App.tsx`, `src/components/EditorRightPanel.tsx`, `src/components/Inspector.tsx`, `src/components/note-list/NoteListViews.tsx`, and regression tests for browser AI panel / grouped card headings / properties divider — added Turn 4
 - `src/hooks/useNoteActions.ts`, `src/hooks/useNoteCreation.ts`, create-note focus tests, and smoke expectations for editor-surface note creation — added Turn 6
+- `tests/smoke/missing-string-metadata-open-note.spec.ts` and `tests/smoke/save-before-note-switch.spec.ts` — added Turn 7
 
 ## Hotspots
 
@@ -49,17 +50,83 @@
 - single-divider right-panel ownership for Properties vs AI — added Turn 4
 - virtualized card-grid group heading span/alignment — added Turn 4
 - created-note browser-to-editor handoff and title-focus ownership — added Turn 6
+- smoke-test note switching under the two-column browser/editor contract — added Turn 7
 
 ## Review status
 
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-27 11:12:44 BST |
-| **Total turns** | 6 |
+| **Last reviewed** | 2026-06-27 13:36:18 BST |
+| **Total turns** | 7 |
 | **Open findings** | 0 |
-| **Resolved findings** | 12 |
+| **Resolved findings** | 13 |
 | **Accepted findings** | 0 |
+
+## Turn 7 — 2026-06-27 13:36:18 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | 04bd6873 plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Re-reviewed the branch after the pre-push Playwright smoke gate exposed remaining old three-column assumptions in note-switching smoke tests.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** low — the patch is test-only and exercises the actual two-column user path instead of changing runtime behavior.
+**Change archetypes:** smoke-test contract update, browser/editor navigation, note-switch persistence validation.
+**Intended change:** Keep the new two-column behavior while making smoke tests switch notes by returning to the document browser before selecting another note.
+**Intent vs actual:** The tests now reveal the note list through the app's Back control before clicking the next document, so they no longer require the list and editor to be visible at the same time.
+**Confidence:** high for the push-blocking specs; medium for the full branch until the full pre-push gate completes.
+**Coverage note:** The exact failing smoke specs now pass locally.
+**Finding triage:** One low/medium push-gate finding was live and resolved. No product regression was found in this turn.
+**Static/analyzer evidence:** TypeScript, ESLint, focused Playwright smoke, whitespace check, and demo-vault dirt check passed. CodeScene MCP/CLI and Codacy CLI remained unavailable in this environment.
+**Architecture impact:** None. This preserves the browser/editor surface model and updates tests to follow it.
+**Deep-review evidence:** Correctness/safety pass checked missing-metadata note open and save-before-switch flows. Maintainability/structure pass kept the navigation helper local to the affected specs because this is a smoke-contract correction rather than a reusable product helper.
+**Bug classes / invariants checked:** note list is hidden while editor is open, Back can return to browser surfaces, save-before-switch still persists raw/rich edits, slow-save de-duplication still opens the latest requested note, and property deletion remains editable after switching.
+**Branch totality:** Rechecked this patch against Turn 1 two-column navigation and Turn 6 created-note editor-surface behavior.
+**Sibling closure:** The two pre-push failing smoke files were both rerun together after patching.
+**Remediation impact surface:** Local to smoke tests. No app code, native code, persistence schema, localization, or updater behavior changed in this turn.
+**Residual risk / unknowns:** Full pre-push gate may still expose additional older smoke tests that assume the removed three-column layout.
+
+### Validation
+
+- `pnpm exec playwright test --config playwright.smoke.config.ts tests/smoke/missing-string-metadata-open-note.spec.ts tests/smoke/save-before-note-switch.spec.ts` — passed, 5 tests
+- `pnpm exec tsc --noEmit` — passed
+- `pnpm lint` — passed
+- `git diff --check` — passed
+- `git status --short -- demo-vault demo-vault-v2` — clean
+- CodeScene file/project health — not run; no CodeScene MCP tool exposed and `cs` CLI unavailable
+- Codacy scan — not run; no Codacy MCP tool exposed and `.codacy/cli.sh` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `useAppNavigation.ts`, `SidebarSections.tsx`, and the two failing smoke specs.
+- **Prior open findings rechecked:** none open from Turns 1-6.
+- **Prior resolved/adjacent areas revalidated:** two-column browser/editor separation, created-note editor transition, and note-switch save flushing.
+- **Hotspots or sibling paths revisited:** missing metadata note switching, raw save-before-switch, slow rich-editor save-before-switch, and property editing after note switch.
+- **Dependency/adjacent surfaces revalidated:** TypeScript, ESLint, focused Playwright smoke, whitespace, and demo-vault hygiene.
+- **Why this is enough:** The patch directly targets the specs that blocked push and verifies the note-switching invariants without weakening the runtime product behavior.
+
+### Challenger pass
+
+- `done` — Assumed one Back action would always reveal the browser surface. The missing-metadata spec showed a previous document could be next in history, so the helper now walks back until the note list is actually visible.
+
+### Resolved / Carried / New findings
+
+#### B7-1 — Resolved — Low — `tests/smoke/missing-string-metadata-open-note.spec.ts`, `tests/smoke/save-before-note-switch.spec.ts`
+
+The smoke specs still clicked the document list after opening a note, which implied the removed three-column layout and timed out under the new browser/editor split.
+
+Resolution: updated the affected smoke helpers to return through the app's Back navigation until the document browser is visible before selecting the next note.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** retry the full pre-push gate.
+3. **Patterns noticed:** smoke tests that switch documents should explicitly choose whether they are exercising quick-open navigation or browser-list navigation.
+4. **Suggested approach:** if another smoke spec fails on hidden note-list clicks, update that spec to use the same browser-return contract rather than reverting the UI.
+5. **Architecture transition:** none.
+6. **Defer on purpose:** CodeScene and Codacy remain deferred because their local/MCP entrypoints are unavailable here.
 
 ## Turn 6 — 2026-06-27 11:09:11 BST
 

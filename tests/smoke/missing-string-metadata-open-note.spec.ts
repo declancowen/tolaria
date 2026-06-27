@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import {
   createFixtureVaultCopy,
   openFixtureVaultDesktopHarness,
@@ -76,7 +76,21 @@ async function reloadVaultFromCommandPalette(page: Page): Promise<void> {
   await expect(page.locator('input[placeholder="Type a command..."]')).not.toBeVisible()
 }
 
-async function openNoteFromList(noteList: Locator, title: string): Promise<void> {
+async function revealNoteList(page: Page) {
+  const noteList = page.getByTestId('note-list-container')
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    if (await noteList.isVisible()) return noteList
+
+    const backButton = page.getByRole('button', { name: 'Go Back' }).first()
+    await expect(backButton).toBeEnabled({ timeout: 5_000 })
+    await backButton.click()
+  }
+  await expect(noteList).toBeVisible({ timeout: 5_000 })
+  return noteList
+}
+
+async function openNoteFromList(page: Page, title: string): Promise<void> {
+  const noteList = await revealNoteList(page)
   await noteList.getByText(title, { exact: true }).click()
 }
 
@@ -84,9 +98,9 @@ async function expectAlphaProjectHeading(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { name: 'Alpha Project', level: 1 })).toBeVisible({ timeout: 5_000 })
 }
 
-async function switchFromNoteBBackToAlpha(page: Page, noteList: Locator): Promise<void> {
-  await openNoteFromList(noteList, 'Note B')
-  await openNoteFromList(noteList, 'alpha-project')
+async function switchFromNoteBBackToAlpha(page: Page): Promise<void> {
+  await openNoteFromList(page, 'Note B')
+  await openNoteFromList(page, 'alpha-project')
   await expectAlphaProjectHeading(page)
 }
 
@@ -121,23 +135,22 @@ test.afterEach(() => {
 
 test('@smoke note open tolerates missing string metadata from the vault scan', async ({ page }) => {
   const errors = collectMissingMetadataCrashes(page)
-  const noteList = page.getByTestId('note-list-container')
 
-  await openNoteFromList(noteList, 'alpha-project')
+  await openNoteFromList(page, 'alpha-project')
   await expectAlphaProjectHeading(page)
-  await switchFromNoteBBackToAlpha(page, noteList)
+  await switchFromNoteBBackToAlpha(page)
 
   expect(errors).toHaveLength(0)
 })
 
 test('@smoke note open after vault reload tolerates missing suggestion metadata', async ({ page }) => {
   const errors = collectMissingMetadataCrashes(page)
-  const noteList = page.getByTestId('note-list-container')
 
   await reloadVaultFromCommandPalette(page)
 
+  const noteList = await revealNoteList(page)
   await expect(noteList.getByText('Phantom From Reload', { exact: true })).toHaveCount(0)
-  await switchFromNoteBBackToAlpha(page, noteList)
+  await switchFromNoteBBackToAlpha(page)
 
   expect(errors).toHaveLength(0)
 })
