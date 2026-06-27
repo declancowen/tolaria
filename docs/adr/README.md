@@ -203,3 +203,4 @@ proposed → active → superseded
 | [0142](0142-rich-editor-prosemirror-decoration-dependency.md) | Rich editor ProseMirror decoration dependency | active |
 | [0143](0143-shared-focus-ownership-guard.md) | Shared focus ownership guard | active |
 | [0144](0144-collections-and-presentations.md) | Collections carry presentation configuration | active |
+| [0145](0145-embedded-whisper-transcription-runtime.md) | Embedded Whisper transcription runtime | active |

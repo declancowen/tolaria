@@ -14,6 +14,11 @@ import type {
   LastCommitInfo,
   PulseCommit,
 } from '../types'
+import {
+  TRANSCRIPTION_MODEL_CATALOG,
+  type TranscriptionModelInstallResult,
+  type TranscriptionModelStatus,
+} from '../lib/transcriptionModels'
 import { MOCK_CONTENT } from './mock-content'
 import { MOCK_ENTRIES } from './mock-entries'
 
@@ -116,6 +121,30 @@ index abc1234..${shortHash} 100644
 
 let mockHasChanges = true
 const mockSavedSinceCommit = new Set<string>()
+const mockInstalledTranscriptionModels = new Set<string>()
+
+function mockTranscriptionModelStatus(modelId: string): TranscriptionModelStatus {
+  const definition = TRANSCRIPTION_MODEL_CATALOG.find(model => model.id === modelId) ?? TRANSCRIPTION_MODEL_CATALOG[0]
+  const installed = mockInstalledTranscriptionModels.has(definition.id)
+  return {
+    ...definition,
+    installed,
+    path: installed ? `/Users/mock/Library/Application Support/com.tolaria.app/transcription-models/${definition.id}` : null,
+  }
+}
+
+function mockTranscriptionModelResult(modelId: string): TranscriptionModelInstallResult {
+  return { model: mockTranscriptionModelStatus(modelId) }
+}
+
+function mockTranscribeRecordedAudio(args: { args?: { modelId?: string; model_id?: string } }) {
+  const modelId = args.args?.modelId ?? args.args?.model_id ?? 'whisper-base-en'
+  if (!mockInstalledTranscriptionModels.has(modelId)) {
+    throw new Error('Download the selected transcription model before recording.')
+  }
+
+  return { transcript: 'Mock local transcription.' }
+}
 
 let mockSettings: Settings = {
   auto_pull_interval_minutes: 5,
@@ -141,6 +170,12 @@ let mockSettings: Settings = {
   default_ai_target: null,
   ai_model_providers: null,
   ai_workspace_conversations: null,
+  transcription_enabled: null,
+  dictation_enabled: null,
+  default_transcription_model_id: null,
+  dictation_key: null,
+  dictation_mode: null,
+  dictation_shortcut_mode: null,
   hide_gitignored_files: null,
   all_notes_show_pdfs: null,
   all_notes_show_images: null,
@@ -563,6 +598,12 @@ export const mockHandlers: Record<string, (args: any) => any> = {
       default_ai_target: s.default_ai_target ?? null,
       ai_model_providers: s.ai_model_providers ?? null,
       ai_workspace_conversations: s.ai_workspace_conversations ?? null,
+      transcription_enabled: s.transcription_enabled ?? null,
+      dictation_enabled: s.dictation_enabled ?? null,
+      default_transcription_model_id: s.default_transcription_model_id ?? null,
+      dictation_key: s.dictation_key ?? null,
+      dictation_mode: s.dictation_mode ?? s.dictation_shortcut_mode ?? null,
+      dictation_shortcut_mode: s.dictation_shortcut_mode ?? null,
       hide_gitignored_files: s.hide_gitignored_files ?? null,
       all_notes_show_pdfs: s.all_notes_show_pdfs ?? null,
       all_notes_show_images: s.all_notes_show_images ?? null,
@@ -571,6 +612,18 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     }
     return null
   },
+  list_transcription_models: () => TRANSCRIPTION_MODEL_CATALOG.map(model => mockTranscriptionModelStatus(model.id)),
+  download_transcription_model: (args: { modelId?: string; model_id?: string }) => {
+    const modelId = args.modelId ?? args.model_id ?? 'whisper-base-en'
+    mockInstalledTranscriptionModels.add(modelId)
+    return mockTranscriptionModelResult(modelId)
+  },
+  delete_transcription_model: (args: { modelId?: string; model_id?: string }) => {
+    const modelId = args.modelId ?? args.model_id ?? 'whisper-base-en'
+    mockInstalledTranscriptionModels.delete(modelId)
+    return mockTranscriptionModelResult(modelId)
+  },
+  transcribe_recorded_audio: mockTranscribeRecordedAudio,
   load_vault_list: () => ({ ...mockVaultList, vaults: [...mockVaultList.vaults] }),
   save_vault_list: (args: { list: typeof mockVaultList }) => { mockVaultList = { ...args.list }; return null },
   rename_note: handleRenameNote,

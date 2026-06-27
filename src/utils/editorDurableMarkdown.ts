@@ -14,10 +14,12 @@ import {
 import { restoreMarkdownHighlightsInBlocks } from './markdownHighlightMarkdown'
 import { serializeMathAwareBlocks } from './mathMarkdown'
 import { mermaidMarkdownCodec } from './mermaidMarkdown'
+import { recordingTranscriptMarkdownCodec } from './recordingTranscriptMarkdown'
 import { tldrawMarkdownCodec } from './tldrawMarkdown'
 
 const EDITOR_DURABLE_MARKDOWN_CODECS = [
   mermaidMarkdownCodec,
+  recordingTranscriptMarkdownCodec,
   tldrawMarkdownCodec,
 ] as const
 

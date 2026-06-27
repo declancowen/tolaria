@@ -35,6 +35,12 @@ const defaultSettings: Settings = {
   default_ai_target: null,
   ai_model_providers: null,
   ai_workspace_conversations: null,
+  transcription_enabled: null,
+  dictation_enabled: null,
+  default_transcription_model_id: null,
+  dictation_key: null,
+  dictation_mode: null,
+  dictation_shortcut_mode: null,
   hide_gitignored_files: null,
   multi_workspace_enabled: null,
   all_notes_show_pdfs: null,
@@ -65,6 +71,12 @@ const savedSettings: Settings = {
   default_ai_target: null,
   ai_model_providers: null,
   ai_workspace_conversations: null,
+  transcription_enabled: null,
+  dictation_enabled: null,
+  default_transcription_model_id: null,
+  dictation_key: null,
+  dictation_mode: null,
+  dictation_shortcut_mode: null,
   hide_gitignored_files: null,
   multi_workspace_enabled: null,
   all_notes_show_pdfs: null,
@@ -132,6 +144,12 @@ function changedSettings(): Settings {
     default_ai_target: null,
     ai_model_providers: null,
     ai_workspace_conversations: null,
+    transcription_enabled: true,
+    dictation_enabled: true,
+    default_transcription_model_id: 'whisper-base-en',
+    dictation_key: 'option_k',
+    dictation_mode: 'toggle',
+    dictation_shortcut_mode: null,
     hide_gitignored_files: false,
     multi_workspace_enabled: null,
     all_notes_show_pdfs: true,
@@ -341,6 +359,7 @@ describe('useSettings', () => {
     await waitFor(() => {
       expect(result.current.loaded).toBe(true)
     })
+    const settingsBeforeSave = result.current.settings
 
     mockInvokeFn.mockImplementationOnce(() => Promise.reject(new Error('write failed')))
 
@@ -349,7 +368,7 @@ describe('useSettings', () => {
     })
 
     // Settings should not have changed on error
-    expect(result.current.settings).toEqual(defaultSettings)
+    expect(result.current.settings).toEqual(settingsBeforeSave)
     errorSpy.mockRestore()
   })
 })

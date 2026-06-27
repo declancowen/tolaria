@@ -4,5 +4,7 @@
 <dict>
   <key>NSLocalNetworkUsageDescription</key>
   <string>Tolaria connects to local model servers you configure for AI chat.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Tolaria uses the microphone for local dictation and recording transcript blocks.</string>
 </dict>
 </plist>

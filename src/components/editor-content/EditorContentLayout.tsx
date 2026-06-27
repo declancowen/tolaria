@@ -31,6 +31,7 @@ type BreadcrumbActions = Pick<
   | 'onToggleInspector'
   | 'showDiffToggle'
   | 'onToggleFavorite'
+  | 'onInsertRecordingTranscript'
   | 'onToggleOrganized'
   | 'onEnterNeighborhood'
   | 'onRevealFile'
@@ -213,6 +214,7 @@ function ActiveTabBreadcrumb({
       inspectorCollapsed={actions.inspectorCollapsed}
       onToggleInspector={actions.onToggleInspector}
       onToggleFavorite={bindPath(actions.onToggleFavorite, path)}
+      onInsertRecordingTranscript={actions.onInsertRecordingTranscript}
       onToggleOrganized={bindPath(actions.onToggleOrganized, path)}
       onEnterNeighborhood={actions.onEnterNeighborhood}
       onRevealFile={actions.onRevealFile}
@@ -285,6 +287,7 @@ function buildBreadcrumbActions(model: EditorContentModel): BreadcrumbActions {
     onToggleInspector: model.onToggleInspector,
     showDiffToggle: model.showDiffToggle,
     onToggleFavorite: model.onToggleFavorite,
+    onInsertRecordingTranscript: model.onInsertRecordingTranscript,
     onToggleOrganized: model.onToggleOrganized,
     onEnterNeighborhood: model.onEnterNeighborhood,
     onRevealFile: model.onRevealFile,

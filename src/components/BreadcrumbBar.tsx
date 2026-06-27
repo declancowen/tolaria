@@ -29,6 +29,7 @@ import {
   FolderOpen,
   Link,
   MapTrifold,
+  Microphone,
   Star,
   CheckCircle,
   ArrowsClockwise,
@@ -57,6 +58,7 @@ interface BreadcrumbBarProps {
   inspectorCollapsed?: boolean
   onToggleInspector?: () => void
   onToggleFavorite?: () => void
+  onInsertRecordingTranscript?: () => void
   onToggleOrganized?: () => void
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
@@ -306,6 +308,32 @@ function NoteWidthAction({
 
 function FavoriteAction({ favorite, locale = 'en', onToggleFavorite }: { favorite: boolean; locale?: AppLocale; onToggleFavorite?: () => void }) {
   return <ConfiguredToggleAction active={favorite} config={TOGGLE_ACTION_CONFIGS.favorite} locale={locale} onClick={onToggleFavorite} />
+}
+
+function RecordingTranscriptAction({
+  locale = 'en',
+  onInsertRecordingTranscript,
+}: {
+  locale?: AppLocale
+  onInsertRecordingTranscript?: () => void
+}) {
+  if (!onInsertRecordingTranscript) return null
+
+  const label = translate(locale, 'editor.toolbar.recordTranscript')
+  return (
+    <ActionTooltip copy={{ label }} side="bottom" align="end">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        className={TOOLBAR_ICON_BUTTON_CLASSNAME}
+        onClick={onInsertRecordingTranscript}
+        aria-label={label}
+      >
+        <Microphone size={TOOLBAR_ICON_SIZE} className={BREADCRUMB_ICON_CLASS} />
+      </Button>
+    </ActionTooltip>
+  )
 }
 
 function OrganizedAction({
@@ -858,6 +886,7 @@ function BreadcrumbActions({
   inspectorCollapsed,
   onToggleInspector,
   onToggleFavorite,
+  onInsertRecordingTranscript,
   onToggleOrganized,
   onRevealFile,
   onCopyFilePath,
@@ -883,6 +912,7 @@ function BreadcrumbActions({
       style={{ gap: 8 }}
     >
       <FavoriteAction favorite={entry.favorite} locale={locale} onToggleFavorite={onToggleFavorite} />
+      <RecordingTranscriptAction locale={locale} onInsertRecordingTranscript={onInsertRecordingTranscript} />
       <OrganizedAction organized={entry.organized} locale={locale} onToggleOrganized={onToggleOrganized} />
       <OverflowToolbarAction>
         <NeighborhoodAction entry={entry} locale={locale} onEnterNeighborhood={onEnterNeighborhood} />

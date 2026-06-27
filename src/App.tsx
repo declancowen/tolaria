@@ -130,6 +130,9 @@ import { useAutoGitWork } from './hooks/useAutoGitWork'
 import { useAppAiWorkspaceBridge } from './hooks/useAppAiWorkspaceBridge'
 import { useAiWorkspaceWindowBridgeEvents } from './hooks/useAiWorkspaceWindowBridgeEvents'
 import { useMcpSetupDialogController } from './hooks/useMcpSetupDialogController'
+import { useDictationShortcut } from './hooks/useDictationShortcut'
+import { useRecordingTranscriptSessionActive } from './hooks/useRecordingTranscriptSession'
+import { OPEN_RECORDING_SETTINGS_EVENT } from './utils/recordingSettingsEvents'
 import { shouldReplaceSyncedTabEntry } from './utils/tabEntrySync'
 import {
   activeVaultModifiedFiles,
@@ -160,7 +163,7 @@ interface MainSurfaceState {
 const MAIN_BROWSER_FILTERS = new Set(['all', 'archived', 'favorites', 'inbox'])
 
 function selectionOpensMainBrowser(selection: SidebarSelection): boolean {
-  if (selection.kind === 'folder' || selection.kind === 'sectionGroup' || selection.kind === 'view') return true
+  if (selection.kind === 'entity' || selection.kind === 'folder' || selection.kind === 'sectionGroup' || selection.kind === 'view') return true
   return selection.kind === 'filter' && MAIN_BROWSER_FILTERS.has(selection.filter)
 }
 
@@ -183,6 +186,12 @@ function selectionFromRecord(parsed: Record<string, unknown>): SidebarSelection 
     return typeof parsed.rootPath === 'string'
       ? { kind: 'folder', path: parsed.path, rootPath: parsed.rootPath }
       : { kind: 'folder', path: parsed.path }
+  }
+  if (parsed.kind === 'entity') {
+    const entry = recordValue(parsed.entry)
+    if (entry && typeof entry.path === 'string') {
+      return { kind: 'entity', entry: entry as unknown as VaultEntry }
+    }
   }
   if (parsed.kind === 'view' && typeof parsed.filename === 'string') {
     return typeof parsed.rootPath === 'string'
@@ -481,6 +490,17 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     settings,
     settingsLoaded,
   })
+  const recordingTranscriptActive = useRecordingTranscriptSessionActive()
+  useDictationShortcut({
+    dictationEnabled: settings.dictation_enabled === true,
+    dictationKey: settings.dictation_key ?? 'option_k',
+    dictationMode: settings.dictation_mode ?? settings.dictation_shortcut_mode ?? 'toggle',
+    defaultTranscriptionModelId: settings.default_transcription_model_id,
+    locale: appLocale,
+    recordingTranscriptActive,
+    transcriptionEnabled: settings.transcription_enabled !== false,
+    onToast: setToastMessage,
+  })
   const quickPromptTarget = lastAiWorkspaceTarget ?? aiAgentPreferences.defaultAiTarget
   const quickPromptTargetReady = aiTargetReady(quickPromptTarget, aiAgentsStatus)
 
@@ -525,6 +545,16 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     setSettingsInitialSectionId(SETTINGS_SECTION_IDS.workspaces)
     dialogs.openSettings()
   }, [dialogs])
+
+  const handleOpenRecordingSettings = useCallback(() => {
+    setSettingsInitialSectionId(SETTINGS_SECTION_IDS.recordings)
+    dialogs.openSettings()
+  }, [dialogs])
+
+  useEffect(() => {
+    window.addEventListener(OPEN_RECORDING_SETTINGS_EVENT, handleOpenRecordingSettings)
+    return () => window.removeEventListener(OPEN_RECORDING_SETTINGS_EVENT, handleOpenRecordingSettings)
+  }, [handleOpenRecordingSettings])
 
   const {
     detectedRenames,
@@ -1004,6 +1034,10 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     setMainSurfaceMode('editor')
     handleReplaceActiveTabWithQueuedDiff(entry)
   }, [handleReplaceActiveTabWithQueuedDiff])
+  const handleEnterNeighborhoodInMainSurface = useCallback((entry: VaultEntry) => {
+    handleEnterNeighborhood(entry)
+    setMainSurfaceMode('browser')
+  }, [handleEnterNeighborhood])
 
   const commitFlow = useCommitFlow({
     savePending: appSave.savePending,
@@ -1722,7 +1756,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
                 {effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'pulse' ? (
                   <PulseView vaultPath={gitSurfaces.historyRepositoryPath} onOpenNote={handlePulseOpenNote} refreshKey={gitHistoryRefreshKey} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => handleSetViewMode('all')} repositories={gitRepositories} selectedRepositoryPath={gitSurfaces.historyRepositoryPath} onRepositoryChange={gitSurfaces.setHistoryRepositoryPath} locale={appLocale} />
                 ) : (
-                  <NoteList entries={visibleEntries} folders={vault.folders} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} loading={isVaultContentLoading} displayMode={noteListDisplayMode} onDisplayModeChange={setNoteListDisplayMode} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={noteListModifiedFiles} modifiedFilesError={noteListModifiedFilesError} gitRepositories={gitRepositories} selectedGitRepositoryPath={gitSurfaces.changesRepositoryPath} onGitRepositoryChange={gitSurfaces.setChangesRepositoryPath} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectFolder={handleSetSelection} onSelectNote={handleSelectNoteInMainSurface} onReplaceActiveTab={handleReplaceActiveTabInMainSurface} onEnterNeighborhood={handleEnterNeighborhood} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} onUpdateViewDefinition={handleUpdateViewDefinition} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onRenameFilename={appSave.handleFilenameRename} onExportPdf={handleExportNotePdfFromList} onToggleFavorite={entryActions.handleToggleFavorite} onToggleOrganized={explicitOrganizationEnabled ? entryActions.handleToggleOrganized : undefined} onRevealFile={fileActions.revealFile} onCopyFilePath={fileActions.copyFilePath} canCopyGitUrl={noteGitUrls.canCopyEntryGitUrl} onCopyGitUrl={noteGitUrls.copyEntryGitUrl} onDiscardFile={handleDiscardFile} onOpenDeletedNote={handleOpenDeletedNote} allNotesNoteListProperties={vaultConfig.allNotes?.noteListProperties ?? null} onUpdateAllNotesNoteListProperties={handleUpdateAllNotesNoteListProperties} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} allNotesFileVisibility={allNotesFileVisibility} multiSelectionCommandRef={multiSelectionCommandRef} locale={appLocale} />
+                  <NoteList entries={visibleEntries} folders={vault.folders} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} loading={isVaultContentLoading} displayMode={noteListDisplayMode} onDisplayModeChange={setNoteListDisplayMode} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={noteListModifiedFiles} modifiedFilesError={noteListModifiedFilesError} gitRepositories={gitRepositories} selectedGitRepositoryPath={gitSurfaces.changesRepositoryPath} onGitRepositoryChange={gitSurfaces.setChangesRepositoryPath} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectFolder={handleSetSelection} onSelectNote={handleSelectNoteInMainSurface} onReplaceActiveTab={handleReplaceActiveTabInMainSurface} onEnterNeighborhood={handleEnterNeighborhoodInMainSurface} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} onUpdateViewDefinition={handleUpdateViewDefinition} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onRenameFilename={appSave.handleFilenameRename} onExportPdf={handleExportNotePdfFromList} onToggleFavorite={entryActions.handleToggleFavorite} onToggleOrganized={explicitOrganizationEnabled ? entryActions.handleToggleOrganized : undefined} onRevealFile={fileActions.revealFile} onCopyFilePath={fileActions.copyFilePath} canCopyGitUrl={noteGitUrls.canCopyEntryGitUrl} onCopyGitUrl={noteGitUrls.copyEntryGitUrl} onDiscardFile={handleDiscardFile} onOpenDeletedNote={handleOpenDeletedNote} allNotesNoteListProperties={vaultConfig.allNotes?.noteListProperties ?? null} onUpdateAllNotesNoteListProperties={handleUpdateAllNotesNoteListProperties} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} allNotesFileVisibility={allNotesFileVisibility} multiSelectionCommandRef={multiSelectionCommandRef} locale={appLocale} />
                 )}
               </div>
               {!mainBrowserVisible && <ResizeHandle onResize={layout.handleNoteListResize} />}
@@ -1748,6 +1782,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
               defaultAiTarget={aiAgentPreferences.defaultAiTarget}
               defaultAiAgentReadiness={aiAgentPreferences.defaultAiAgentReadiness}
               defaultAiAgentReady={aiAgentPreferences.defaultAiAgentReady}
+              defaultTranscriptionModelId={settings.default_transcription_model_id}
               onUnsupportedAiPaste={setToastMessage}
               onInspectorResize={layout.handleInspectorResize}
               inspectorEntry={activeTab?.entry ?? null}

@@ -76,6 +76,16 @@ import {
 import { Button } from './ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import type { NoteWidthMode } from '../types'
+import {
+  DEFAULT_DICTATION_KEY,
+  DEFAULT_DICTATION_MODE,
+  DEFAULT_TRANSCRIPTION_MODEL_ID,
+  normalizeDictationKey,
+  normalizeDictationMode,
+  resolveDefaultTranscriptionModelId,
+  type DictationKey,
+  type DictationMode,
+} from '../lib/transcriptionModels'
 import type { VaultOption } from './status-bar/types'
 import { SETTINGS_SECTION_IDS } from './settingsSectionIds'
 import {
@@ -83,6 +93,7 @@ import {
   trackTelemetryConsentChange,
 } from './settingsPreferenceTracking'
 import { useSettingsPanelAutofocus, useSettingsPanelFocusTrap } from './useSettingsPanelFocus'
+import { TranscriptionSettingsSection } from './TranscriptionSettingsSection'
 
 interface SettingsPanelProps {
   open: boolean
@@ -113,6 +124,11 @@ interface SettingsDraft {
   defaultAiAgent: AiAgentId
   defaultAiTarget: string
   aiModelProviders: AiModelProvider[]
+  transcriptionEnabled: boolean
+  dictationEnabled: boolean
+  defaultTranscriptionModelId: string
+  dictationKey: DictationKey
+  dictationMode: DictationMode
   releaseChannel: ReleaseChannel
   automaticUpdateChecksEnabled: boolean
   themeMode: ThemeMode
@@ -153,6 +169,16 @@ interface SettingsBodyProps {
   setDefaultAiTarget: (value: string) => void
   aiModelProviders: AiModelProvider[]
   setAiModelProviders: (value: AiModelProvider[]) => void
+  transcriptionEnabled: boolean
+  setTranscriptionEnabled: (value: boolean) => void
+  dictationEnabled: boolean
+  setDictationEnabled: (value: boolean) => void
+  defaultTranscriptionModelId: string
+  setDefaultTranscriptionModelId: (value: string) => void
+  dictationKey: DictationKey
+  setDictationKey: (value: DictationKey) => void
+  dictationMode: DictationMode
+  setDictationMode: (value: DictationMode) => void
   onCopyMcpConfig?: () => void
   releaseChannel: ReleaseChannel
   setReleaseChannel: (value: ReleaseChannel) => void
@@ -219,6 +245,11 @@ function createSettingsDraft(
     defaultAiAgent: resolveDefaultAiAgent(settings.default_ai_agent),
     defaultAiTarget: resolveAiTarget(settings).id,
     aiModelProviders: normalizeAiModelProviders(settings.ai_model_providers),
+    transcriptionEnabled: settings.transcription_enabled !== false,
+    dictationEnabled: settings.dictation_enabled === true,
+    defaultTranscriptionModelId: resolveDefaultTranscriptionModelId(settings.default_transcription_model_id ?? DEFAULT_TRANSCRIPTION_MODEL_ID),
+    dictationKey: normalizeDictationKey(settings.dictation_key ?? DEFAULT_DICTATION_KEY),
+    dictationMode: normalizeDictationMode(settings.dictation_mode ?? settings.dictation_shortcut_mode ?? DEFAULT_DICTATION_MODE),
     releaseChannel: normalizeReleaseChannel(settings.release_channel),
     automaticUpdateChecksEnabled: areAutomaticUpdateChecksEnabled(settings),
     themeMode: resolveSettingsDraftThemeMode(settings.theme_mode),
@@ -279,6 +310,12 @@ function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Setti
     default_ai_agent: draft.defaultAiAgent,
     default_ai_target: draft.defaultAiTarget,
     ai_model_providers: draft.aiModelProviders.length > 0 ? draft.aiModelProviders : null,
+    transcription_enabled: draft.transcriptionEnabled,
+    dictation_enabled: draft.dictationEnabled,
+    default_transcription_model_id: draft.defaultTranscriptionModelId,
+    dictation_key: draft.dictationKey,
+    dictation_mode: draft.dictationMode,
+    dictation_shortcut_mode: null,
     hide_gitignored_files: draft.hideGitignoredFiles,
     multi_workspace_enabled: draft.multiWorkspaceEnabled,
   }
@@ -569,6 +606,16 @@ function SettingsBodyFromDraft({
       setDefaultAiTarget={(value) => updateDraft('defaultAiTarget', value)}
       aiModelProviders={draft.aiModelProviders}
       setAiModelProviders={(value) => updateDraft('aiModelProviders', value)}
+      transcriptionEnabled={draft.transcriptionEnabled}
+      setTranscriptionEnabled={(value) => updateDraft('transcriptionEnabled', value)}
+      dictationEnabled={draft.dictationEnabled}
+      setDictationEnabled={(value) => updateDraft('dictationEnabled', value)}
+      defaultTranscriptionModelId={draft.defaultTranscriptionModelId}
+      setDefaultTranscriptionModelId={(value) => updateDraft('defaultTranscriptionModelId', value)}
+      dictationKey={draft.dictationKey}
+      setDictationKey={(value) => updateDraft('dictationKey', value)}
+      dictationMode={draft.dictationMode}
+      setDictationMode={(value) => updateDraft('dictationMode', value)}
       onCopyMcpConfig={onCopyMcpConfig}
       releaseChannel={draft.releaseChannel}
       setReleaseChannel={(value) => updateDraft('releaseChannel', value)}
@@ -759,6 +806,16 @@ function SettingsAgentWorkflowSections({
   setDefaultAiTarget,
   aiModelProviders,
   setAiModelProviders,
+  transcriptionEnabled,
+  setTranscriptionEnabled,
+  dictationEnabled,
+  setDictationEnabled,
+  defaultTranscriptionModelId,
+  setDefaultTranscriptionModelId,
+  dictationKey,
+  setDictationKey,
+  dictationMode,
+  setDictationMode,
   onCopyMcpConfig,
   explicitOrganization,
   setExplicitOrganization,
@@ -784,6 +841,20 @@ function SettingsAgentWorkflowSections({
           onCopyMcpConfig={onCopyMcpConfig}
         />
       </SettingsSection>
+
+      <SettingsRecordingSection
+        t={t}
+        transcriptionEnabled={transcriptionEnabled}
+        setTranscriptionEnabled={setTranscriptionEnabled}
+        dictationEnabled={dictationEnabled}
+        setDictationEnabled={setDictationEnabled}
+        defaultTranscriptionModelId={defaultTranscriptionModelId}
+        setDefaultTranscriptionModelId={setDefaultTranscriptionModelId}
+        dictationKey={dictationKey}
+        setDictationKey={setDictationKey}
+        dictationMode={dictationMode}
+        setDictationMode={setDictationMode}
+      />
 
       <SettingsSection id={SETTINGS_SECTION_IDS.workflow}>
         <OrganizationWorkflowSection
@@ -1090,6 +1161,51 @@ function AiAgentSettingsSection({
         </>
       ) : null}
     </>
+  )
+}
+
+function SettingsRecordingSection({
+  t,
+  transcriptionEnabled,
+  setTranscriptionEnabled,
+  dictationEnabled,
+  setDictationEnabled,
+  defaultTranscriptionModelId,
+  setDefaultTranscriptionModelId,
+  dictationKey,
+  setDictationKey,
+  dictationMode,
+  setDictationMode,
+}: Pick<
+  SettingsBodyProps,
+  | 't'
+  | 'transcriptionEnabled'
+  | 'setTranscriptionEnabled'
+  | 'dictationEnabled'
+  | 'setDictationEnabled'
+  | 'defaultTranscriptionModelId'
+  | 'setDefaultTranscriptionModelId'
+  | 'dictationKey'
+  | 'setDictationKey'
+  | 'dictationMode'
+  | 'setDictationMode'
+>) {
+  return (
+    <SettingsSection id={SETTINGS_SECTION_IDS.recordings}>
+      <TranscriptionSettingsSection
+        t={t}
+        transcriptionEnabled={transcriptionEnabled}
+        setTranscriptionEnabled={setTranscriptionEnabled}
+        dictationEnabled={dictationEnabled}
+        setDictationEnabled={setDictationEnabled}
+        defaultModelId={defaultTranscriptionModelId}
+        setDefaultModelId={setDefaultTranscriptionModelId}
+        dictationKey={dictationKey}
+        setDictationKey={setDictationKey}
+        dictationMode={dictationMode}
+        setDictationMode={setDictationMode}
+      />
+    </SettingsSection>
   )
 }
 

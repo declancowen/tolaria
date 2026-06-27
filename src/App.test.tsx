@@ -279,10 +279,6 @@ async function clickNoteListItem(noteListContainer: HTMLElement, title: string, 
   })
 }
 
-async function enterNeighborhood(noteListContainer: HTMLElement, title: string) {
-  await clickNoteListItem(noteListContainer, title, { metaKey: true })
-}
-
 async function pressEscape() {
   await act(async () => {
     fireEvent.keyDown(window, { key: 'Escape' })
@@ -552,8 +548,8 @@ describe('App', () => {
     expect(screen.getByTestId('sidebar-loading-types')).toBeInTheDocument()
     expect(screen.getByTestId('sidebar-loading-folders')).toBeInTheDocument()
     expect(screen.getByTestId('note-list-loading-skeleton')).toBeInTheDocument()
-    expect(screen.getByTestId('breadcrumb-title-skeleton')).toBeInTheDocument()
-    expect(screen.getByTestId('editor-content-skeleton')).toBeInTheDocument()
+    expect(screen.queryByTestId('breadcrumb-title-skeleton')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('editor-content-skeleton')).not.toBeInTheDocument()
     expect(screen.queryByText('Select a note to start editing')).not.toBeInTheDocument()
     expect(screen.getByTestId('status-vault-reloading')).toHaveAccessibleName('Reloading vault from disk')
     await act(async () => {
@@ -577,11 +573,13 @@ describe('App', () => {
     })
   })
 
-  it('shows empty state in editor when no note is selected', async () => {
+  it('shows the document list when no note is selected', async () => {
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByText('Select a note to start editing')).toBeInTheDocument()
+      expect(screen.getByText('All Notes')).toBeInTheDocument()
     })
+    expect(screen.queryByText('Select a note to start editing')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('blocknote-view')).not.toBeInTheDocument()
   })
 
   it('opens a note window after loading the active vault graph', async () => {
@@ -610,16 +608,16 @@ describe('App', () => {
     expect(listVault).toHaveBeenCalled()
   })
 
-  it('shows keyboard shortcut hints', async () => {
+  it('keeps editor shortcut hints hidden until a document is opened', async () => {
     const quickOpenHint = formatShortcutDisplay({ display: '⌘P / ⌘O' })
     const newNoteHint = formatShortcutDisplay({ display: '⌘N' })
     const { container } = render(<App />)
-    await screen.findByText('Select a note to start editing')
+    await screen.findByText('All Notes')
 
     await waitFor(() => {
       const visibleText = container.textContent ?? ''
-      expect(visibleText).toContain(`${quickOpenHint} to search`)
-      expect(visibleText).toContain(`${newNoteHint} to create`)
+      expect(visibleText).not.toContain(`${quickOpenHint} to search`)
+      expect(visibleText).not.toContain(`${newNoteHint} to create`)
     })
   })
 
@@ -792,6 +790,8 @@ describe('App', () => {
     render(<App />)
 
     await screen.findByText('All Notes')
+    await clickNoteListItem(await screen.findByTestId('note-list-container'), 'Test Project')
+    await screen.findByTestId('blocknote-view')
     fireEvent.keyDown(window, { key: 'l', code: 'KeyL', metaKey: true, shiftKey: true })
 
     const input = await screen.findByTestId('agent-input')
@@ -826,6 +826,8 @@ describe('App', () => {
     render(<App />)
 
     await screen.findByText('All Notes')
+    await clickNoteListItem(await screen.findByTestId('note-list-container'), 'Test Project')
+    await screen.findByTestId('blocknote-view')
     fireEvent.keyDown(window, { key: 'l', code: 'KeyL', metaKey: true, shiftKey: true })
 
     const input = await screen.findByTestId('agent-input')
@@ -928,8 +930,8 @@ describe('App', () => {
     expect(screen.queryByTestId('vault-loading-skeleton')).not.toBeInTheDocument()
     expect(screen.getByTestId('sidebar-loading-favorites')).toBeInTheDocument()
     expect(screen.getByTestId('note-list-loading-skeleton')).toBeInTheDocument()
-    expect(screen.getByTestId('breadcrumb-title-skeleton')).toBeInTheDocument()
-    expect(screen.getByTestId('editor-content-skeleton')).toBeInTheDocument()
+    expect(screen.queryByTestId('breadcrumb-title-skeleton')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('editor-content-skeleton')).not.toBeInTheDocument()
     expect(screen.getByTestId('status-vault-reloading')).toHaveAccessibleName('Reloading vault from disk')
 
     await act(async () => {
@@ -1091,42 +1093,22 @@ describe('App', () => {
     })
   })
 
-  it('pressing Escape in Neighborhood mode blurs the editor before unwinding note-list history', async () => {
-    configureNeighborhoodVault()
+  it('pressing Escape in Neighborhood mode unwinds note-list history', async () => {
+    configureNeighborhoodFavoritesVault()
 
     render(<App />)
 
+    let favoritesSection: HTMLElement | undefined
+    await waitFor(() => {
+      const sidebar = screen.getByText('FAVORITES')
+      const currentFavoritesSection = sidebar.closest('div')?.parentElement as HTMLElement
+      expect(within(currentFavoritesSection).getByText('Alpha')).toBeInTheDocument()
+      favoritesSection = currentFavoritesSection
+    })
+    fireEvent.click(within(favoritesSection!).getByText('Alpha'))
+
     const noteListContainer = await screen.findByTestId('note-list-container', {}, { timeout: 5000 })
     const getHeader = () => getHeaderForNoteList(noteListContainer)
-
-    await waitFor(() => {
-      expect(getHeader()).toHaveTextContent('Inbox')
-    })
-
-    await enterNeighborhood(noteListContainer, 'Alpha')
-
-    await waitFor(() => {
-      expect(getHeader()).toHaveTextContent('Alpha')
-    })
-
-    const editor = screen.getByTestId('mock-editor')
-    editor.focus()
-    expect(editor).toHaveFocus()
-
-    await pressEscape()
-
-    await waitFor(() => {
-      expect(noteListContainer).toHaveFocus()
-      expect(getHeader()).toHaveTextContent('Alpha')
-    })
-
-    await enterNeighborhood(noteListContainer, 'Beta')
-
-    await waitFor(() => {
-      expect(getHeader()).toHaveTextContent('Beta')
-    })
-
-    await pressEscape()
 
     await waitFor(() => {
       expect(getHeader()).toHaveTextContent('Alpha')
@@ -1247,6 +1229,12 @@ describe('App', () => {
       fireEvent.click(within(noteListContainer).getByText('Gamma'))
       await Promise.resolve()
     })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Go Back' }))
+      await Promise.resolve()
+    })
+    const refreshedNoteListContainer = await screen.findByTestId('note-list-container')
+    await clickNoteListItem(refreshedNoteListContainer, 'Gamma')
     await waitFor(() => {
       expect(window.__laputaTest?.activeTabPath).toBe('/vault/gamma.md')
     })

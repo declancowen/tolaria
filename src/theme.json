@@ -99,7 +99,7 @@
   },
   "blockquote": {
     "borderLeftWidth": 3,
-    "borderLeftColor": "var(--accent-blue)",
+    "borderLeftColor": "color-mix(in srgb, var(--foreground) 42%, transparent)",
     "paddingLeft": 16,
     "marginVertical": 12,
     "color": "var(--text-secondary)",

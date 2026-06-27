@@ -15,6 +15,11 @@ import { normalizeDateDisplayFormat } from '../utils/dateDisplay'
 import { DEFAULT_THEME_MODE, normalizeThemeMode, type ThemeMode } from '../lib/themeMode'
 import type { Settings } from '../types'
 import { normalizeNoteWidthMode } from '../utils/noteWidth'
+import {
+  normalizeDictationKey,
+  normalizeDictationMode,
+  resolveDefaultTranscriptionModelId,
+} from '../lib/transcriptionModels'
 
 async function invokeNativeIfAvailable<T>(command: string, tauriArgs: Record<string, unknown>): Promise<T | undefined> {
   try {
@@ -57,6 +62,12 @@ const EMPTY_SETTINGS: Settings = {
   default_ai_target: null,
   ai_model_providers: null,
   ai_workspace_conversations: null,
+  transcription_enabled: null,
+  dictation_enabled: null,
+  default_transcription_model_id: null,
+  dictation_key: null,
+  dictation_mode: null,
+  dictation_shortcut_mode: null,
   hide_gitignored_files: null,
   all_notes_show_pdfs: null,
   all_notes_show_images: null,
@@ -84,6 +95,12 @@ function normalizeSettings(settings: Settings): Settings {
     default_ai_target: settings.default_ai_target?.trim() || null,
     ai_model_providers: aiModelProviders.length > 0 ? aiModelProviders : null,
     ai_workspace_conversations: normalizeAiWorkspaceConversations(settings.ai_workspace_conversations),
+    transcription_enabled: settings.transcription_enabled ?? null,
+    dictation_enabled: settings.dictation_enabled ?? null,
+    default_transcription_model_id: resolveDefaultTranscriptionModelId(settings.default_transcription_model_id),
+    dictation_key: normalizeDictationKey(settings.dictation_key),
+    dictation_mode: normalizeDictationMode(settings.dictation_mode ?? settings.dictation_shortcut_mode),
+    dictation_shortcut_mode: null,
     hide_gitignored_files: settings.hide_gitignored_files ?? null,
     all_notes_show_pdfs: settings.all_notes_show_pdfs ?? null,
     all_notes_show_images: settings.all_notes_show_images ?? null,

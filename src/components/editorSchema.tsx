@@ -22,6 +22,7 @@ import { resolveWikilinkColor as resolveColor } from '../utils/wikilinkColors'
 import { resolveEntry } from '../utils/wikilink'
 import { MATH_BLOCK_TYPE, MATH_INLINE_TYPE, renderMathToHtml } from '../utils/mathMarkdown'
 import { MERMAID_BLOCK_TYPE, mermaidFenceSource } from '../utils/mermaidMarkdown'
+import { RECORDING_TRANSCRIPT_BLOCK_TYPE } from '../utils/recordingTranscriptMarkdown'
 import { TLDRAW_BLOCK_TYPE, TLDRAW_DEFAULT_HEIGHT } from '../utils/tldrawMarkdown'
 import { MARKDOWN_HIGHLIGHT_STYLE } from '../utils/markdownHighlightMarkdown'
 import type { VaultEntry } from '../types'
@@ -32,6 +33,7 @@ import { SafeHtmlSpan } from './SafeMarkup'
 import { updateTldrawBlockPropsSafely } from './tldrawBlockProps'
 import { useExternalMediaPreview } from '../utils/mediaPreviewRuntime'
 import { Textarea } from './ui/textarea'
+import { RecordingTranscriptBlock } from './RecordingTranscriptBlock'
 import { dispatchRichEditorExternalChange } from './editorExternalChangeEvents'
 import {
   isStaleBlockReferenceError,
@@ -409,10 +411,32 @@ const TldrawBlock = createReactBlockSpec(
   },
 )
 
+const RecordingTranscriptBlockSpec = createReactBlockSpec(
+  {
+    type: RECORDING_TRANSCRIPT_BLOCK_TYPE,
+    propSchema: {
+      collapsed: { default: 'false' },
+      createdAt: { default: '' },
+      languageMode: { default: 'english' },
+      modelId: { default: 'whisper-base-en' },
+      title: { default: 'Recording' },
+      transcript: { default: '' },
+    },
+    content: 'none',
+  },
+  {
+    runsBefore: ['codeBlock'],
+    render: (props) => (
+      <RecordingTranscriptBlock block={props.block} editor={props.editor} />
+    ),
+  },
+)
+
 const codeBlock = createCodeBlockSpec(createTolariaCodeBlockOptions())
 const audioBlock = AudioBlockSpec()
 const mathBlock = MathBlock()
 const mermaidBlock = MermaidBlock()
+const recordingTranscriptBlock = RecordingTranscriptBlockSpec()
 const tldrawBlock = TldrawBlock()
 const videoBlock = VideoBlockSpec()
 
@@ -448,6 +472,7 @@ export const schema = BlockNoteSchema.create({
     audio: audioBlock,
     mathBlock,
     mermaidBlock,
+    recordingTranscriptBlock,
     tldrawBlock,
     codeBlock,
     video: videoBlock,

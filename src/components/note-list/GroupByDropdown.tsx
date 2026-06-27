@@ -53,14 +53,15 @@ export function GroupByDropdown({
   locale = 'en',
   onChange,
 }: {
-  current: GroupByOption
+  current?: GroupByOption
   customProperties?: string[]
   locale?: AppLocale
   onChange: (option: GroupByOption) => void
 }) {
+  const activeGroupBy = current ?? 'none'
   const options = [...BUILT_IN_GROUP_OPTIONS, ...uniquePropertyOptions(customProperties ?? [])]
-  const currentLabel = groupByOptionLabel(current, locale)
-  const triggerLabel = groupByTriggerLabel(current, locale)
+  const currentLabel = groupByOptionLabel(activeGroupBy, locale)
+  const triggerLabel = groupByTriggerLabel(activeGroupBy, locale)
 
   return (
     <DropdownMenu>
@@ -71,7 +72,7 @@ export function GroupByDropdown({
           size="xs"
           className={cn(
             'h-6 min-w-0 gap-1 rounded px-1 py-0.5 text-muted-foreground hover:bg-accent hover:text-foreground',
-            current !== 'none' && 'bg-accent text-foreground',
+            activeGroupBy !== 'none' && 'bg-accent text-foreground',
           )}
           title={translate(locale, 'noteList.groupBy.by', { label: currentLabel })}
           aria-label={translate(locale, 'noteList.groupBy.by', { label: currentLabel })}
@@ -82,7 +83,7 @@ export function GroupByDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="z-[12000] w-44">
-        <DropdownMenuRadioGroup value={current} onValueChange={(value) => onChange(value as GroupByOption)}>
+        <DropdownMenuRadioGroup value={activeGroupBy} onValueChange={(value) => onChange(value as GroupByOption)}>
           {options.map((option) => (
             <DropdownMenuRadioItem key={option} value={option} data-testid={`group-by-option-${option}`}>
               {groupByOptionLabel(option, locale)}

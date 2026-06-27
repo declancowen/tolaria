@@ -22,10 +22,15 @@ export interface SettingsPreferenceDraft {
   aiFeaturesEnabled: boolean
   automaticUpdateChecksEnabled: boolean
   dateDisplayFormat: DateDisplayFormat
+  defaultTranscriptionModelId: string
   defaultNoteWidth: NoteWidthMode
+  dictationEnabled: boolean
+  dictationKey: string
+  dictationMode: string
   gitFeaturesEnabled: boolean
   multiWorkspaceEnabled: boolean
   sidebarTypePluralizationEnabled: boolean
+  transcriptionEnabled: boolean
 }
 
 function numericFlag(value: boolean): number {
@@ -72,6 +77,31 @@ export function trackSettingsPreferenceChanges(settings: Settings, draft: Settin
     normalizeNoteWidthMode(settings.note_width_mode) ?? DEFAULT_NOTE_WIDTH_MODE,
     draft.defaultNoteWidth,
     trackDefaultNoteWidthChanged,
+  )
+  trackEnabledPreferenceChange(
+    settings.transcription_enabled !== false,
+    draft.transcriptionEnabled,
+    'transcription_enabled_changed',
+  )
+  trackEnabledPreferenceChange(
+    settings.dictation_enabled === true,
+    draft.dictationEnabled,
+    'dictation_enabled_changed',
+  )
+  trackPreferenceChange(
+    settings.default_transcription_model_id ?? '',
+    draft.defaultTranscriptionModelId,
+    modelId => trackEvent('default_transcription_model_changed', { model_id: modelId }),
+  )
+  trackPreferenceChange(
+    settings.dictation_key ?? '',
+    draft.dictationKey,
+    key => trackEvent('dictation_key_changed', { key }),
+  )
+  trackPreferenceChange(
+    settings.dictation_mode ?? settings.dictation_shortcut_mode ?? '',
+    draft.dictationMode,
+    mode => trackEvent('dictation_mode_changed', { mode }),
   )
   trackPreferenceChange(
     settings.sidebar_type_pluralization_enabled ?? true,

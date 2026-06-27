@@ -12,6 +12,7 @@ import {
   ListBullets,
   ListChecks,
   ListNumbers,
+  Microphone,
   Minus,
   Pi,
   Paragraph,
@@ -32,7 +33,9 @@ import {
 import { trackEvent } from '../lib/telemetry'
 import { MATH_BLOCK_TYPE } from '../utils/mathMarkdown'
 import { MERMAID_BLOCK_TYPE, mermaidFenceSource } from '../utils/mermaidMarkdown'
+import { RECORDING_TRANSCRIPT_BLOCK_TYPE } from '../utils/recordingTranscriptMarkdown'
 import { TLDRAW_BLOCK_TYPE, TLDRAW_DEFAULT_HEIGHT } from '../utils/tldrawMarkdown'
+import { createRecordingTranscriptBlockProps } from './recordingTranscriptInsertion'
 
 type TolariaSlashMenuItem = DefaultReactSuggestionItem & { key: string }
 type TolariaBlockTypeSelectItem = {
@@ -49,7 +52,7 @@ type BlockSlashMenuItemConfig = {
   aliases: string[]
   eventName?: string
   key: string
-  props: Record<string, unknown>
+  props: Record<string, unknown> | (() => Record<string, unknown>)
   title: string
   type: string
 }
@@ -110,6 +113,7 @@ const TOLARIA_SLASH_MENU_ICONS: Partial<Record<string, PhosphorIcon>> = {
   image: ImageSquare,
   math: Pi,
   mermaid: FlowArrow,
+  recording: Microphone,
   numbered_list: ListNumbers,
   paragraph: Paragraph,
   quote: Quotes,
@@ -178,6 +182,19 @@ export function createMathSlashMenuItem(
   })
 }
 
+function createRecordingSlashMenuItem(
+  editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
+): TolariaSlashMenuItem {
+  return createBlockSlashMenuItem(editor, {
+    key: 'recording',
+    title: 'Recording',
+    aliases: ['record', 'voice', 'transcript', 'dictation', 'audio note'],
+    eventName: 'editor_recording_transcript_slash_command_used',
+    type: RECORDING_TRANSCRIPT_BLOCK_TYPE,
+    props: () => createRecordingTranscriptBlockProps(),
+  })
+}
+
 function createBlockSlashMenuItem(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
   config: BlockSlashMenuItemConfig,
@@ -193,7 +210,7 @@ function createBlockSlashMenuItem(
       const block = blockEditor.getTextCursorPosition().block
       blockEditor.replaceBlocks([block], [{
         type: config.type,
-        props: config.props,
+        props: typeof config.props === 'function' ? config.props() : config.props,
       }])
       if (config.eventName) trackEvent(config.eventName)
     },
@@ -273,6 +290,7 @@ export function getTolariaSlashMenuItems(
     [
       createMermaidSlashMenuItem(editor),
       createMathSlashMenuItem(editor, labels),
+      createRecordingSlashMenuItem(editor),
       createWhiteboardSlashMenuItem(editor),
     ],
   )

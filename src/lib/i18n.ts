@@ -272,8 +272,8 @@ function localizedInterpolationValues(locale: AppLocale, values?: TranslationVal
 export function translate(locale: AppLocale, key: TranslationKey, values?: TranslationValues): string {
   const catalog = Reflect.get(TRANSLATIONS, locale) as Partial<Record<TranslationKey, string>> | undefined
   const template = Reflect.get(catalog ?? {}, key) as string | undefined
-  const fallbackTemplate = Reflect.get(EN_TRANSLATIONS, key) as string
-  return interpolate(template ?? fallbackTemplate, localizedInterpolationValues(locale, values))
+  const fallbackTemplate = Reflect.get(EN_TRANSLATIONS, key) as string | undefined
+  return interpolate(template ?? fallbackTemplate ?? String(key), localizedInterpolationValues(locale, values))
 }
 
 export function createTranslator(locale: AppLocale = DEFAULT_APP_LOCALE) {

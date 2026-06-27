@@ -33,6 +33,8 @@ mod pi_events;
 pub mod search;
 pub mod settings;
 pub mod telemetry;
+pub mod transcription_models;
+pub mod transcription_runtime;
 pub mod vault;
 pub mod vault_list;
 pub mod vault_watcher;
@@ -540,6 +542,10 @@ macro_rules! app_invoke_handler {
             commands::delete_vault_folder,
             commands::batch_archive_notes,
             commands::get_settings,
+            commands::list_transcription_models,
+            commands::download_transcription_model,
+            commands::delete_transcription_model,
+            commands::transcribe_recorded_audio,
             commands::get_ai_workspace_sessions,
             commands::check_for_app_update,
             commands::update_menu_state,

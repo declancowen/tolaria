@@ -7,6 +7,7 @@ import {
   serializeDurableEditorBlocks,
 } from './editorDurableMarkdown'
 import { MERMAID_BLOCK_TYPE } from './mermaidMarkdown'
+import { RECORDING_TRANSCRIPT_BLOCK_TYPE } from './recordingTranscriptMarkdown'
 import { TLDRAW_BLOCK_TYPE } from './tldrawMarkdown'
 
 describe('editor durable markdown blocks', () => {
@@ -69,5 +70,43 @@ describe('editor durable markdown blocks', () => {
         diagram: 'flowchart TB\n  a["events: run.* thread.* and field_value"] --> b["ok"]\n',
       },
     })
+  })
+
+  it('round-trips recording transcript blocks through fenced markdown', () => {
+    const markdown = [
+      '```tolaria-recording title="Recording" createdAt="2026-06-27T00:00:00.000Z" modelId="whisper-base-en" languageMode="english" collapsed="true"',
+      'First transcript line.',
+      '',
+      'Second transcript line with ``` inside.',
+      '```',
+    ].join('\n')
+    const preprocessed = preProcessDurableEditorMarkdown({ markdown })
+    const blocks = injectDurableEditorMarkdownBlocks([
+      { type: 'paragraph', content: [{ type: 'text', text: preprocessed, styles: {} }], children: [] },
+    ]) as Array<{ type: string; props?: Record<string, string> }>
+
+    expect(blocks).toEqual([
+      expect.objectContaining({
+        type: RECORDING_TRANSCRIPT_BLOCK_TYPE,
+        props: expect.objectContaining({
+          collapsed: 'true',
+          createdAt: '2026-06-27T00:00:00.000Z',
+          languageMode: 'english',
+          modelId: 'whisper-base-en',
+          title: 'Recording',
+          transcript: 'First transcript line.\n\nSecond transcript line with ``` inside.',
+        }),
+      }),
+    ])
+
+    const editor = { blocksToMarkdownLossy: vi.fn(() => '') }
+
+    expect(serializeDurableEditorBlocks(editor, blocks)).toBe([
+      '````tolaria-recording title="Recording" createdAt="2026-06-27T00:00:00.000Z" modelId="whisper-base-en" languageMode="english" collapsed="true"',
+      'First transcript line.',
+      '',
+      'Second transcript line with ``` inside.',
+      '````',
+    ].join('\n'))
   })
 })

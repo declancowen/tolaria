@@ -39,6 +39,7 @@ export interface EditorContentProps {
   onNavigateWikilink: (target: string) => void
   onEditorChange?: () => void
   onToggleFavorite?: (path: string) => void
+  onInsertRecordingTranscript?: () => void
   onToggleOrganized?: (path: string) => void
   onEnterNeighborhood?: (entry: VaultEntry) => void
   onRevealFile?: (path: string) => void

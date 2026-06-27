@@ -19,6 +19,11 @@
 - `src/components/FolderTree.tsx` — added Turn 1
 - `src-tauri/src/vault/*` — added Turn 1
 - `src/lib/locales/*.json` — added Turn 1
+- `src-tauri/src/transcription_*` and `src-tauri/src/commands/transcription.rs` — added Turn 2
+- `src/components/RecordingTranscriptBlock.tsx` and `src/components/TranscriptionSettingsSection.tsx` — added Turn 2
+- `src/hooks/useDictationShortcut.ts` and `src/utils/*recording*` / `src/utils/*transcription*` — added Turn 2
+- `src/components/editorSchema.tsx`, `src/utils/editorDurableMarkdown.ts`, and recording markdown tests — added Turn 2
+- settings, mock Tauri handlers, docs, ADR, and macOS entitlements for local transcription — added Turn 2
 
 ## Hotspots
 
@@ -26,17 +31,128 @@
 - two-column browser/editor navigation state — added Turn 1
 - shared toolbar and side-panel icon sizing — added Turn 1
 - hidden root guidance files and folder-tree root behavior — added Turn 1
+- local transcription model download/delete lifecycle — added Turn 2
+- recording block markdown persistence and editor insertion — added Turn 2
+- dictation clipboard/active-target insertion while recording sessions are mutually exclusive — added Turn 2
+- Tauri microphone permission and Whisper runtime packaging — added Turn 2
 
 ## Review status
 
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-26 22:29:20 BST |
-| **Total turns** | 1 |
+| **Last reviewed** | 2026-06-27 01:15:56 BST |
+| **Total turns** | 2 |
 | **Open findings** | 0 |
-| **Resolved findings** | 1 |
+| **Resolved findings** | 8 |
 | **Accepted findings** | 0 |
+
+## Turn 2 — 2026-06-27 01:15:56 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | cf300716593be9dc4f1631702500de9cbed42b28 plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Re-reviewed the cumulative branch after adding local Whisper transcription, recording transcript blocks, dictation, recording settings, model download/delete commands, microphone permissions, markdown persistence, and the remaining fixes from the UI browser/panel work.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** high — the branch now spans editor content persistence, native model downloads, microphone capture, settings migration, app-level keyboard capture, and broad UI layout state.
+**Change archetypes:** native integration, editor block schema, markdown serialization, settings migration, keyboard shortcut, browser/editor navigation, UI layout.
+**Intended change:** Keep the UI/browser redesign clean, then add a recording block and app dictation that use downloadable local Whisper models, avoid storing audio, write transcript text into notes or active text surfaces, and expose model management in settings.
+**Intent vs actual:** The implementation matches the requested product shape for download/select/delete, recording start/stop/resume, read-only transcript blocks, app dictation, clipboard copy, and editor/active-target insertion. Recording currently transcribes on stop/resume boundaries rather than live streaming each partial phrase during capture.
+**Confidence:** medium-high — frontend lint/type/build/coverage, Rust tests, Rust coverage, locale validation, focused recording/dictation tests, and whitespace checks passed. CodeScene and Codacy remain unavailable locally, so those mandatory external gates are recorded as missing evidence.
+**Coverage note:** Full frontend coverage passed before the final small cleanup; focused tests were then added and passed for recording markdown persistence and dictation text commit. Rust test and coverage gates passed after installing/using the coverage toolchain.
+**Finding triage:** No open findings remain. The review loop fixed the live render/test failures previously seen around group state, breadcrumb button footprint, panel/browser visibility, macOS collapsed header offset, and recording/dictation coverage.
+**Static/analyzer evidence:** ESLint, TypeScript, `git diff --check`, locale validation, full frontend coverage, Rust tests, and Rust coverage passed. Fallow is not installed. CodeScene MCP/CLI and Codacy CLI were not available in this environment.
+**Architecture impact:** Adds a new local transcription boundary: the browser records WAV audio in memory, Tauri loads local Whisper model artifacts from app config data, and notes persist transcript text only through a fenced durable markdown block. Settings owns model/default/dictation preferences.
+**Deep-review evidence:** Correctness/safety pass checked model install state, no-model messaging, microphone capture cleanup, dictation-vs-recording mutual exclusion, markdown persistence, native command registration, settings migration, and two-column browser/editor state. Maintainability/structure pass checked that recording model metadata stays centralized, editor block insertion is isolated, and settings UI uses existing controls.
+**Bug classes / invariants checked:** no audio is written to vault/disk by recording capture, selected model must be installed before recording/dictation starts, transcript blocks serialize without losing backticks or metadata, dictation always copies and inserts when a text target exists, settings tolerate missing/legacy transcription values, entity/folder selections stay in the browser surface, and toolbar/button sizing/footprint remains consistent.
+**Branch totality:** Re-read the new native transcription files, frontend recording/dictation utilities, recording block, settings section, editor schema/markdown codecs, app dictation wiring, current UI browser fixes, and prior review hotspots.
+**Sibling closure:** Recording toolbar insertion and slash-command insertion both flow through `recordingTranscriptInsertion.ts`; browser dictation and editor recording share the same model catalog/runtime; mock and native Tauri command names were checked together.
+**Remediation impact surface:** Fixes were local to the affected surfaces: silent audio graph for capture, defensive group dropdown defaults, restored breadcrumb action footprint CSS, entity selection routed to browser mode, settings normalizers, shadcn button cleanup, and targeted tests.
+**Residual risk / unknowns:** CodeScene/Codacy are not callable here. The model download uses the static Whisper catalog and HTTPS but does not verify hashes. Live microphone/manual native UX was not exercised end-to-end because this review used automated checks; the subsequent Apple Silicon build will further validate native compilation.
+
+### Validation
+
+- `pnpm exec vitest run src/App.test.tsx src/components/BreadcrumbBar.visibility.test.tsx src/components/PulseView.test.tsx --reporter=dot` — passed
+- `pnpm exec vitest run src/utils/editorDurableMarkdown.test.ts src/utils/dictationText.test.ts --reporter=dot` — passed
+- `pnpm test:coverage` — passed, 4,744 tests; lines 86.87%
+- `npx tsc --noEmit` — passed
+- `pnpm lint` — passed
+- `pnpm l10n:validate` — passed
+- `pnpm build` — passed
+- `cargo test --manifest-path src-tauri/Cargo.toml` — passed, 1,039 library tests plus integration/doc-test lanes
+- `cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-lines 85` — passed, lines 85.68%
+- `git diff --check` — passed
+- `git status --short -- demo-vault demo-vault-v2` — clean
+- CodeScene file/project health — not run; MCP and `cs` CLI unavailable
+- Codacy scan — not run; `.codacy/cli.sh` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `RecordingTranscriptBlock.tsx`, `TranscriptionSettingsSection.tsx`, `useDictationShortcut.ts`, `transcriptionRuntime.ts`, `recordingTranscriptMarkdown.ts`, `editorDurableMarkdown.ts`, `editorSchema.tsx`, `settings.rs`, `transcription_models.rs`, `transcription_runtime.rs`, `commands/transcription.rs`, `App.tsx`, `BreadcrumbBar.tsx`, `GroupByDropdown.tsx`, `PulseView.tsx`, and mock Tauri handlers.
+- **Prior open findings rechecked:** none open from Turn 1.
+- **Prior resolved/adjacent areas revalidated:** list/row/card browser, right-panel tabs, breadcrumb toolbar footprint, collapsed sidebar header, and main browser/editor split were rechecked by tests and direct review.
+- **Hotspots or sibling paths revisited:** recording insertion via toolbar/slash command, dictation commit paths, model install status in settings and block UI, and native/mock Tauri command parity.
+- **Dependency/adjacent surfaces revalidated:** settings persistence, locale catalogs, ADR/docs, macOS Info.plist/entitlements, Cargo lock/dependency addition, and demo-vault hygiene.
+- **Why this is enough:** The review attacks the highest-risk state and persistence variants introduced by the branch and pairs them with automated verification across frontend, Rust, localization, and build paths.
+
+### Challenger pass
+
+- `done` — Assumed one serious issue remained in persistence or capture. Found missing focused recording/dictation tests and a raw collapse button in the recording block; both were fixed and validated. Rechecked the previous UI regressions that had caused render errors.
+
+### Resolved / Carried / New findings
+
+#### B2-1 — Resolved — Medium — `src/utils/transcriptionRuntime.ts`
+
+The microphone graph connected the script processor directly to the destination. That can keep processing alive, but it can also create audible monitoring depending on platform behavior.
+
+Resolution: routed the processor through a muted gain node before the destination so capture remains active without playing microphone audio.
+
+#### B2-2 — Resolved — Medium — `src/components/note-list/GroupByDropdown.tsx`
+
+Collapsed header tests and some render paths could omit the group value, causing undefined group state to reach the dropdown.
+
+Resolution: defaulted missing group state to `none` defensively.
+
+#### B2-3 — Resolved — Medium — `src/components/Editor.css`
+
+The breadcrumb toolbar lost its zero-footprint button CSS, which could reintroduce spacing/alignment drift in the editor action row.
+
+Resolution: restored the breadcrumb action button footprint rule.
+
+#### B2-4 — Resolved — Medium — `src/App.tsx`
+
+Entity/neighborhood selections could fall back into an editor-plus-list surface and recreate the three-column behavior the UI redesign was meant to remove.
+
+Resolution: entity selections now remain browser-surface selections, and neighborhood entry no longer opens the editor.
+
+#### B2-5 — Resolved — Medium — `src-tauri/src/settings.rs`
+
+Legacy or missing transcription settings were normalized into concrete defaults too early, making tests and migration behavior harder to reason about.
+
+Resolution: native normalizers now return `None` for missing/invalid values and let the UI layer apply defaults.
+
+#### B2-6 — Resolved — Medium — `src/utils/editorDurableMarkdown.test.ts`, `src/utils/dictationText.test.ts`
+
+The new recording/dictation paths did not have targeted frontend tests proving transcript persistence or dictation copy/insert behavior.
+
+Resolution: added focused tests for fenced recording transcript markdown round-trip and dictation text commit.
+
+#### B2-7 — Resolved — Low — `src/components/RecordingTranscriptBlock.tsx`
+
+The recording block collapse control used a raw button instead of the app's shadcn button primitive.
+
+Resolution: changed the collapse control to `Button` while keeping the existing visual class.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** after the Apple Silicon build, manually test model download, microphone permission prompt, recording start/stop/resume, and Option+K dictation in the packaged app.
+3. **Patterns noticed:** keep transcription model metadata centralized; do not duplicate model names or language labels in settings/block UI.
+4. **Suggested approach:** if live partial transcription becomes a hard requirement, add chunked/streaming transcription as a separate architecture change rather than bolting it onto the current stop-boundary flow.
+5. **Architecture transition:** local-only Whisper runtime and transcript-only persistence are documented in ADR 0145.
+6. **Defer on purpose:** CodeScene and Codacy evidence is deferred only because the local/MCP entrypoints are unavailable here.
 
 ## Turn 1 — 2026-06-26 22:29:20 BST
 

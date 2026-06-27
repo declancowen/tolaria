@@ -38,6 +38,7 @@ import { createRichEditorTextDirectionExtension } from './richEditorTextDirectio
 import { createRichEditorTransformErrorRecoveryExtension } from './richEditorTransformErrorRecoveryExtension'
 import { useFilenameAutolinkGuard } from './useFilenameAutolinkGuard'
 import { useEditorPdfExport } from './useEditorPdfExport'
+import { insertRecordingTranscriptBlockAfterCursor } from './recordingTranscriptInsertion'
 import type { NotePdfExportSource } from '../utils/notePdfExport'
 import {
   useRichEditorContentReadiness,
@@ -76,6 +77,7 @@ interface EditorProps {
   defaultAiTarget?: AiTarget
   defaultAiAgentReadiness?: AiAgentReadiness
   defaultAiAgentReady?: boolean
+  defaultTranscriptionModelId?: string | null
   onInspectorResize: (delta: number) => void
   inspectorEntry: VaultEntry | null
   inspectorContent: string | null
@@ -95,6 +97,7 @@ interface EditorProps {
   noteList?: NoteListItem[]
   noteListFilter?: { type: string | null; query: string }
   onToggleFavorite?: (path: string) => void
+  onInsertRecordingTranscript?: () => void
   onToggleOrganized?: (path: string) => void
   onEnterNeighborhood?: (entry: VaultEntry) => void
   onRevealFile?: (path: string) => void
@@ -116,6 +119,7 @@ interface EditorProps {
   onGoBack?: () => void
   onGoForward?: () => void
   leftPanelsCollapsed?: boolean
+  onExpandLeftPanels?: () => void
   /** Mutable ref that Editor registers its raw-mode toggle into, for command palette access. */
   rawToggleRef?: React.MutableRefObject<() => void>
   /** Mutable ref that Editor registers editor find commands into, for shortcuts and menus. */
@@ -392,9 +396,13 @@ function EditorLayout({
   onToggleTableOfContents,
   inspectorCollapsed,
   onToggleInspector,
+  onSelectInspectorPanel,
+  onSelectAIChatPanel,
+  onCloseRightPanel,
   onNavigateWikilink,
   handleEditorChange,
   onToggleFavorite,
+  onInsertRecordingTranscript,
   onToggleOrganized,
   onEnterNeighborhood,
   onRevealFile,
@@ -415,6 +423,8 @@ function EditorLayout({
   onRenameFilename,
   noteWidth,
   onToggleNoteWidth,
+  leftPanelsCollapsed,
+  onExpandLeftPanels,
   isConflicted,
   onKeepMine,
   onKeepTheirs,
@@ -469,9 +479,13 @@ function EditorLayout({
   onToggleTableOfContents?: () => void
   inspectorCollapsed: boolean
   onToggleInspector: () => void
+  onSelectInspectorPanel: () => void
+  onSelectAIChatPanel?: () => void
+  onCloseRightPanel: () => void
   onNavigateWikilink: (target: string) => void
   handleEditorChange: () => void
   onToggleFavorite?: (path: string) => void
+  onInsertRecordingTranscript?: () => void
   onToggleOrganized?: (path: string) => void
   onEnterNeighborhood?: (entry: VaultEntry) => void
   onRevealFile?: (path: string) => void
@@ -491,6 +505,8 @@ function EditorLayout({
   onRenameFilename?: (path: string, newFilenameStem: string) => void
   noteWidth?: NoteWidthMode
   onToggleNoteWidth?: () => void
+  leftPanelsCollapsed?: boolean
+  onExpandLeftPanels?: () => void
   isConflicted?: boolean
   onKeepMine?: (path: string) => void
   onKeepTheirs?: (path: string) => void
@@ -568,6 +584,7 @@ function EditorLayout({
               onNavigateWikilink={onNavigateWikilink}
               onEditorChange={handleEditorChange}
               onToggleFavorite={onToggleFavorite}
+              onInsertRecordingTranscript={onInsertRecordingTranscript}
               onToggleOrganized={onToggleOrganized}
               onEnterNeighborhood={onEnterNeighborhood}
               onRevealFile={onRevealFile}
@@ -586,16 +603,19 @@ function EditorLayout({
               onRenameFilename={onRenameFilename}
               noteWidth={noteWidth}
               onToggleNoteWidth={onToggleNoteWidth}
+              leftPanelsCollapsed={leftPanelsCollapsed}
+              onExpandLeftPanels={onExpandLeftPanels}
               isConflicted={isConflicted}
               onKeepMine={onKeepMine}
               onKeepTheirs={onKeepTheirs}
               locale={locale}
             />
         }
-        {(showTableOfContents || !inspectorCollapsed) && <ResizeHandle onResize={onInspectorResize} />}
+        {(showTableOfContents || showAIChat || !inspectorCollapsed) && <ResizeHandle onResize={onInspectorResize} />}
         <EditorRightPanel
-          showAIChat={false}
+          showAIChat={showAIChat}
           showTableOfContents={showTableOfContents}
+          aiWorkspaceSurface={aiWorkspaceSurface}
           inspectorCollapsed={inspectorCollapsed}
           inspectorWidth={inspectorWidth}
           editor={editor}
@@ -614,6 +634,9 @@ function EditorLayout({
           noteListFilter={noteListFilter}
           onToggleInspector={onToggleInspector}
           onToggleAIChat={onToggleAIChat}
+          onSelectInspectorPanel={onSelectInspectorPanel}
+          onSelectAIChatPanel={onSelectAIChatPanel}
+          onCloseRightPanel={onCloseRightPanel}
           onToggleTableOfContents={onToggleTableOfContents}
           onNavigateWikilink={onNavigateWikilink}
           onViewCommitDiff={handleViewCommitDiff}
@@ -632,7 +655,6 @@ function EditorLayout({
           workspaces={workspaces}
           locale={locale}
         />
-        {showAIChat && aiWorkspaceSurface}
       </div>
       <EditorMemoryProbe entries={entries} vaultPath={vaultPath} locale={locale} />
     </div>
@@ -641,11 +663,15 @@ function EditorLayout({
 
 type EditorRuntime = ReturnType<typeof useEditorSetup>
 type EditorLayoutProps = Parameters<typeof EditorLayout>[0]
+type EditorRightPanelState = ReturnType<typeof useRightPanelExclusion>
 
 function buildEditorLayoutProps(
   props: EditorProps,
   runtime: EditorRuntime,
   findRequest: RawEditorFindRequest | null,
+  rightPanel: EditorRightPanelState,
+  onExportPdf: (source?: NotePdfExportSource) => void,
+  onInsertRecordingTranscript: () => void,
 ): EditorLayoutProps {
   return {
     ...props,
@@ -654,6 +680,16 @@ function buildEditorLayoutProps(
     defaultAiAgent: props.defaultAiAgent ?? DEFAULT_AI_AGENT,
     defaultAiAgentReady: props.defaultAiAgentReady ?? true,
     findRequest,
+    onToggleInspector: rightPanel.handleToggleInspectorPanel,
+    onSelectInspectorPanel: rightPanel.handleSelectInspectorPanel,
+    onSelectAIChatPanel: props.onToggleAIChat ? rightPanel.handleSelectAIChatPanel : undefined,
+    onCloseRightPanel: rightPanel.handleCloseRightPanel,
+    showAIChat: props.showAIChat,
+    onToggleAIChat: props.onToggleAIChat ? rightPanel.handleToggleAIChatPanel : undefined,
+    showTableOfContents: rightPanel.showTableOfContents,
+    onToggleTableOfContents: rightPanel.handleToggleTableOfContents,
+    onExportPdf,
+    onInsertRecordingTranscript,
   }
 }
 
@@ -687,6 +723,15 @@ export const Editor = memo(function Editor(props: EditorProps) {
     pdfExportRef: props.pdfExportRef,
     rawMode: runtime.rawMode,
   })
+  const handleInsertRecordingTranscript = useCallback(() => {
+    insertRecordingTranscriptBlockAfterCursor(
+      runtime.editor,
+      {
+        modelId: props.defaultTranscriptionModelId,
+      },
+      'toolbar',
+    )
+  }, [props.defaultTranscriptionModelId, runtime.editor])
   useRegisterEditorContentFlushes({
     activeTab: runtime.activeTab,
     flushPendingEditorChange: runtime.flushPendingEditorChange,
@@ -707,13 +752,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
 
   return (
     <EditorLayout
-      {...buildEditorLayoutProps(props, runtime, findRequest)}
-      onToggleInspector={rightPanel.handleToggleInspectorPanel}
-      showAIChat={props.showAIChat}
-      onToggleAIChat={props.onToggleAIChat ? rightPanel.handleToggleAIChatPanel : undefined}
-      showTableOfContents={rightPanel.showTableOfContents}
-      onToggleTableOfContents={rightPanel.handleToggleTableOfContents}
-      onExportPdf={handleExportPdf}
+      {...buildEditorLayoutProps(props, runtime, findRequest, rightPanel, handleExportPdf, handleInsertRecordingTranscript)}
     />
   )
 })

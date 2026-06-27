@@ -18,6 +18,13 @@ const SUPPORTED_DEFAULT_AI_AGENTS: &[&str] = &[
 pub const DEFAULT_HIDE_GITIGNORED_FILES: bool = true;
 const SUPPORTED_NOTE_WIDTH_MODES: &[&str] = &["normal", "wide"];
 const SUPPORTED_DATE_DISPLAY_FORMATS: &[&str] = &["us", "european", "friendly", "iso"];
+const SUPPORTED_TRANSCRIPTION_MODEL_IDS: &[&str] = &[
+    "whisper-tiny-en",
+    "whisper-base-en",
+    "whisper-base-multilingual",
+];
+const SUPPORTED_DICTATION_KEYS: &[&str] = &["option_k", "command_shift_d"];
+const SUPPORTED_DICTATION_MODES: &[&str] = &["push_to_talk", "toggle"];
 const SUPPORTED_UI_LANGUAGE_ALIASES: &[(&str, &str)] = &[
     ("en", "en"),
     ("en-us", "en"),
@@ -112,6 +119,13 @@ pub struct Settings {
     pub default_ai_target: Option<String>,
     pub ai_model_providers: Option<Vec<AiModelProvider>>,
     pub ai_workspace_conversations: Option<Vec<AiWorkspaceConversationSetting>>,
+    pub transcription_enabled: Option<bool>,
+    pub dictation_enabled: Option<bool>,
+    pub default_transcription_model_id: Option<String>,
+    pub dictation_key: Option<String>,
+    pub dictation_mode: Option<String>,
+    #[serde(default)]
+    pub dictation_shortcut_mode: Option<String>,
     pub hide_gitignored_files: Option<bool>,
     pub all_notes_show_pdfs: Option<bool>,
     pub all_notes_show_images: Option<bool>,
@@ -168,6 +182,29 @@ pub fn normalize_note_width_mode(value: Option<&str>) -> Option<String> {
 pub fn normalize_date_display_format(value: Option<&str>) -> Option<String> {
     match value.map(|candidate| candidate.trim().to_ascii_lowercase()) {
         Some(format) if SUPPORTED_DATE_DISPLAY_FORMATS.contains(&format.as_str()) => Some(format),
+        _ => None,
+    }
+}
+
+pub fn normalize_default_transcription_model_id(value: Option<&str>) -> Option<String> {
+    match value.map(|candidate| candidate.trim().to_ascii_lowercase()) {
+        Some(model_id) if SUPPORTED_TRANSCRIPTION_MODEL_IDS.contains(&model_id.as_str()) => {
+            Some(model_id)
+        }
+        _ => None,
+    }
+}
+
+pub fn normalize_dictation_key(value: Option<&str>) -> Option<String> {
+    match value.map(|candidate| candidate.trim().to_ascii_lowercase()) {
+        Some(key) if SUPPORTED_DICTATION_KEYS.contains(&key.as_str()) => Some(key),
+        _ => None,
+    }
+}
+
+pub fn normalize_dictation_mode(value: Option<&str>) -> Option<String> {
+    match value.map(|candidate| candidate.trim().to_ascii_lowercase()) {
+        Some(mode) if SUPPORTED_DICTATION_MODES.contains(&mode.as_str()) => Some(mode),
         _ => None,
     }
 }
@@ -231,6 +268,19 @@ fn normalize_settings(settings: Settings) -> Settings {
         ai_workspace_conversations: normalize_ai_workspace_conversations(
             settings.ai_workspace_conversations,
         ),
+        transcription_enabled: settings.transcription_enabled,
+        dictation_enabled: settings.dictation_enabled,
+        default_transcription_model_id: normalize_default_transcription_model_id(
+            settings.default_transcription_model_id.as_deref(),
+        ),
+        dictation_key: normalize_dictation_key(settings.dictation_key.as_deref()),
+        dictation_mode: normalize_dictation_mode(
+            settings
+                .dictation_mode
+                .as_deref()
+                .or(settings.dictation_shortcut_mode.as_deref()),
+        ),
+        dictation_shortcut_mode: None,
         hide_gitignored_files: settings.hide_gitignored_files,
         all_notes_show_pdfs: settings.all_notes_show_pdfs,
         all_notes_show_images: settings.all_notes_show_images,
@@ -466,6 +516,12 @@ mod tests {
             default_ai_target: Some("agent:codex".to_string()),
             ai_model_providers: None,
             ai_workspace_conversations: None,
+            transcription_enabled: Some(true),
+            dictation_enabled: Some(true),
+            default_transcription_model_id: Some("whisper-base-en".to_string()),
+            dictation_key: Some("option_k".to_string()),
+            dictation_mode: Some("toggle".to_string()),
+            dictation_shortcut_mode: None,
             hide_gitignored_files: Some(false),
             multi_workspace_enabled: Some(true),
             all_notes_show_pdfs: Some(true),

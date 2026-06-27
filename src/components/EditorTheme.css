@@ -96,6 +96,141 @@
   flex-shrink: 0;
 }
 
+/* --- Recording transcript block --- */
+.recording-transcript-block {
+  width: 100%;
+  margin: 10px 0;
+  overflow: hidden;
+  border: 1px solid var(--border-primary);
+  border-radius: 8px;
+  background: var(--surface-editor, var(--background));
+  box-shadow: none;
+  color: var(--colors-text);
+}
+
+.recording-transcript-block__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.recording-transcript-block__collapse,
+.recording-transcript-block__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: var(--muted-foreground);
+}
+
+.recording-transcript-block__icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.recording-transcript-block__title {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.recording-transcript-block__title span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 17px;
+  font-weight: 620;
+  line-height: 1.35;
+  color: var(--text-heading, var(--foreground));
+}
+
+.recording-transcript-block__title span:last-child,
+.recording-transcript-block__privacy,
+.recording-transcript-block__status {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+
+.recording-transcript-block__actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.recording-transcript-block__model-trigger {
+  max-width: 220px;
+  min-width: 150px;
+  border-color: var(--border-primary);
+  background: transparent;
+  box-shadow: none;
+  color: var(--foreground);
+}
+
+.recording-transcript-block__body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+}
+
+.recording-transcript-block__status[data-state="recording"] {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.recording-transcript-block__message {
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted-foreground);
+}
+
+.recording-transcript-block__message--actionable {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.recording-transcript-block__message--actionable > span {
+  min-width: 0;
+}
+
+.recording-transcript-block__textarea {
+  min-height: 128px;
+  resize: none;
+  overflow: hidden;
+  border-color: var(--border-primary);
+  background: color-mix(in srgb, var(--muted) 45%, var(--background));
+  box-shadow: none !important;
+  font: inherit;
+  line-height: var(--editor-line-height);
+  color: var(--colors-text);
+  cursor: default;
+}
+
+.recording-transcript-block__textarea[readonly] {
+  opacity: 1;
+}
+
+.editor__blocknote-container .bn-block-content:has(.recording-transcript-block) {
+  width: 100%;
+  margin-inline-start: 8px;
+}
+
 /* --- Paragraph spacing --- */
 .editor__blocknote-container .bn-block-content[data-content-type="paragraph"] {
   margin-bottom: var(--editor-paragraph-spacing);

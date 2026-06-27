@@ -4,6 +4,7 @@ import type { AiModelProvider } from './lib/aiTargets'
 import type { ThemeMode } from './lib/themeMode'
 import type { AppLocale } from './lib/i18n'
 import type { DateDisplayFormat } from './utils/dateDisplay'
+import type { DictationKey, DictationMode } from './lib/transcriptionModels'
 
 export type VaultPropertyScalar = string | number | boolean | null
 export type VaultPropertyArray = Array<string | number | boolean>
@@ -140,6 +141,13 @@ export interface Settings {
   default_ai_target?: string | null
   ai_model_providers?: AiModelProvider[] | null
   ai_workspace_conversations?: AiWorkspaceConversationSetting[] | null
+  transcription_enabled?: boolean | null
+  dictation_enabled?: boolean | null
+  default_transcription_model_id?: string | null
+  dictation_key?: DictationKey | null
+  dictation_mode?: DictationMode | null
+  /** @deprecated Use dictation_mode. Kept so older local settings normalize cleanly. */
+  dictation_shortcut_mode?: DictationMode | null
   hide_gitignored_files?: boolean | null
   all_notes_show_pdfs?: boolean | null
   all_notes_show_images?: boolean | null

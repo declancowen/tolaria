@@ -812,6 +812,15 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `save_vault_settings` | Write vault settings |
 | `repair_vault` | Flatten vault structure, migrate legacy frontmatter, restore root config/type defaults including `note.md` |
 
+### Transcription
+
+| Command | Description |
+|---------|-------------|
+| `list_transcription_models` | Return the local Whisper model catalog with installed status |
+| `download_transcription_model` | Download a selected Whisper model into app-local transcription model storage |
+| `delete_transcription_model` | Delete an installed transcription model from app-local storage |
+| `transcribe_recorded_audio` | Decode an in-memory 16 kHz mono WAV payload, run the selected embedded Whisper model, and return transcript text without persisting audio |
+
 ### AI & MCP
 
 | Command | Description |
