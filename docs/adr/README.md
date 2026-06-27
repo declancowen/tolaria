@@ -121,7 +121,7 @@ proposed → active → superseded
 | [0062](0062-selectable-cli-ai-agents.md) | Selectable CLI AI agents with a shared panel architecture | active |
 | [0063](0063-blocknote-code-block-package-for-editor-highlighting.md) | BlockNote code-block package for editor syntax highlighting | active |
 | [0064](0064-ratcheted-codescene-thresholds.md) | Ratcheted CodeScene thresholds as the quality gate baseline | active |
-| [0065](0065-root-managed-ai-guidance-files.md) | Root-managed AI guidance files with Claude shim | active |
+| [0065](0065-root-managed-ai-guidance-files.md) | Root-managed AI guidance files with Claude shim | superseded -> [0146](0146-hidden-managed-vault-guidance.md) |
 | [0066](0066-calendar-semver-versioning-for-alpha-and-stable-releases.md) | Calendar-semver versioning for alpha and stable releases | active |
 | [0067](0067-autogit-idle-and-inactive-checkpoints.md) | AutoGit idle and inactive checkpoints | active |
 | [0068](0068-h1-only-title-surface-with-optional-untitled-auto-rename.md) | H1-only title surface with optional untitled auto-rename | active |
@@ -204,3 +204,4 @@ proposed → active → superseded
 | [0143](0143-shared-focus-ownership-guard.md) | Shared focus ownership guard | active |
 | [0144](0144-collections-and-presentations.md) | Collections carry presentation configuration | active |
 | [0145](0145-embedded-whisper-transcription-runtime.md) | Embedded Whisper transcription runtime | active |
+| [0146](0146-hidden-managed-vault-guidance.md) | Hidden managed vault guidance | active |

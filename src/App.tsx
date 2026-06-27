@@ -491,7 +491,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     settingsLoaded,
   })
   const recordingTranscriptActive = useRecordingTranscriptSessionActive()
-  useDictationShortcut({
+  const dictation = useDictationShortcut({
     dictationEnabled: settings.dictation_enabled === true,
     dictationKey: settings.dictation_key ?? 'option_k',
     dictationMode: settings.dictation_mode ?? settings.dictation_shortcut_mode ?? 'toggle',
@@ -501,6 +501,8 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     transcriptionEnabled: settings.transcription_enabled !== false,
     onToast: setToastMessage,
   })
+  const dictationListeningToast = translate(appLocale, 'editor.dictation.listening')
+  const toastPersistent = dictation.dictating && toastMessage === dictationListeningToast
   const quickPromptTarget = lastAiWorkspaceTarget ?? aiAgentPreferences.defaultAiTarget
   const quickPromptTargetReady = aiTargetReady(quickPromptTarget, aiAgentsStatus)
 
@@ -1859,7 +1861,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
         ) : null}
         <GitSetupDialog open={gitFeaturesEnabled && shouldShowGitSetupDialog} onInitGit={handleInitGitRepo} onDismiss={dismissGitSetupDialog} onNeverForVault={neverForVaultGitSetupDialog} />
         <DeleteProgressNotice count={deleteActions.pendingDeleteCount} />
-        <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
+        <Toast message={toastMessage} persistent={toastPersistent} onDismiss={() => setToastMessage(null)} />
         <QuickOpenPalette open={dialogs.showQuickOpen} entries={visibleEntries} isLoading={vault.isLoading} onSelect={handleSelectNoteInMainSurface} onCreateNote={(title) => notes.handleCreateNote(title, 'Note', 'quick_open')} onClose={dialogs.closeQuickOpen} locale={appLocale} />
         <CommandPalette
           open={dialogs.showCommandPalette}

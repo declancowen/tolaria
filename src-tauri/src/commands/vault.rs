@@ -93,16 +93,19 @@ mod tests {
     }
 
     fn assert_seeded_guidance_content(vault_path: &Path) {
-        let agents = std::fs::read_to_string(vault_path.join("AGENTS.md")).unwrap();
-        let claude = std::fs::read_to_string(vault_path.join("CLAUDE.md")).unwrap();
+        let guidance_path = vault_path.join(".laputa").join("agents");
+        let agents = std::fs::read_to_string(guidance_path.join("AGENTS.md")).unwrap();
+        let claude = std::fs::read_to_string(guidance_path.join("CLAUDE.md")).unwrap();
 
         assert!(agents.contains("Use the first H1 as the note title."));
         assert!(agents.contains("Tolaria reads notes recursively from all folders"));
         assert!(agents.contains("views/*.yml"));
         assert!(claude.starts_with("---\ntype: Note\n_organized: true\n---"));
-        assert!(claude.contains("@AGENTS.md"));
+        assert!(claude.contains("@.laputa/agents/AGENTS.md"));
         assert!(claude.contains("only a Claude Code compatibility shim"));
         assert!(!claude.contains("# CLAUDE.md"));
+        assert!(!vault_path.join("AGENTS.md").exists());
+        assert!(!vault_path.join("CLAUDE.md").exists());
     }
 
     fn assert_seeded_type_scaffolding(vault_path: &Path) {
@@ -359,7 +362,13 @@ mod tests {
         assert!(result.is_ok());
         assert_paths_exist(
             vault_path,
-            &["AGENTS.md", "CLAUDE.md", "type.md", "note.md", ".gitignore"],
+            &[
+                ".laputa/agents/AGENTS.md",
+                ".laputa/agents/CLAUDE.md",
+                "type.md",
+                "note.md",
+                ".gitignore",
+            ],
         );
         assert_paths_absent(vault_path, &["config.md"]);
     }
@@ -373,9 +382,15 @@ mod tests {
         assert!(result.is_ok());
         assert_paths_exist(
             &vault_path,
-            &[".git", "AGENTS.md", "CLAUDE.md", "type.md", "note.md"],
+            &[
+                ".git",
+                ".laputa/agents/AGENTS.md",
+                ".laputa/agents/CLAUDE.md",
+                "type.md",
+                "note.md",
+            ],
         );
-        assert_paths_absent(&vault_path, &["config.md"]);
+        assert_paths_absent(&vault_path, &["config.md", "AGENTS.md", "CLAUDE.md"]);
         assert_seeded_guidance_content(&vault_path);
         assert_seeded_type_scaffolding(&vault_path);
     }

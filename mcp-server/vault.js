@@ -392,10 +392,10 @@ async function readConfigFiles(vaultPath) {
   const configFiles = {}
 
   try {
-    const agentsPath = resolveInside(vaultPath, 'config/agents.md')
+    const agentsPath = resolveInside(vaultPath, '.laputa/agents/AGENTS.md')
     if (agentsPath) configFiles.agents = await readUtf8File(agentsPath)
   } catch {
-    // config/agents.md may not exist yet
+    // Managed agent guidance may not exist yet
   }
 
   return configFiles

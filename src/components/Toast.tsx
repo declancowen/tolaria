@@ -4,14 +4,15 @@ import { cn } from '@/lib/utils'
 interface ToastProps {
   message: string | null
   onDismiss: () => void
+  persistent?: boolean
 }
 
-export function Toast({ message, onDismiss }: ToastProps) {
+export function Toast({ message, onDismiss, persistent = false }: ToastProps) {
   useEffect(() => {
-    if (!message) return
+    if (!message || persistent) return
     const timer = setTimeout(onDismiss, 2000)
     return () => clearTimeout(timer)
-  }, [message, onDismiss])
+  }, [message, onDismiss, persistent])
 
   if (!message) return null
 

@@ -14,13 +14,17 @@ const mocks = vi.hoisted(() => {
   const sentryHandler = vi.fn()
   const reactErrorHandler = vi.fn(() => sentryHandler)
   const getShortcutEventInit = vi.fn(() => ({ key: 'x' }))
+  const isFullscreen = vi.fn(() => Promise.resolve(false))
   const loadAppModule = vi.fn()
+  const onResized = vi.fn(() => Promise.resolve(vi.fn()))
   const renderApp = vi.fn()
 
   return {
     createRoot,
     getShortcutEventInit,
+    isFullscreen,
     loadAppModule,
+    onResized,
     renderApp,
     reactErrorHandler,
     render,
@@ -30,6 +34,12 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('react-dom/client', () => ({ createRoot: mocks.createRoot }))
 vi.mock('@sentry/react', () => ({ reactErrorHandler: mocks.reactErrorHandler }))
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: () => ({
+    isFullscreen: mocks.isFullscreen,
+    onResized: mocks.onResized,
+  }),
+}))
 vi.mock('./App.tsx', () => ({
   default: (() => {
     mocks.loadAppModule()
@@ -106,6 +116,10 @@ function renderedTree(): ReactNode {
   return tree
 }
 
+function waitForAsyncEffects(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 0))
+}
+
 function hasElementTypeName(node: ReactNode, name: string): boolean {
   if (!isValidElement<{ children?: ReactNode }>(node)) return false
 
@@ -124,6 +138,8 @@ describe('main entrypoint', () => {
     document.body.innerHTML = '<div id="root"></div>'
     document.body.className = ''
     delete (globalThis as { isTauri?: boolean }).isTauri
+    mocks.isFullscreen.mockResolvedValue(false)
+    mocks.onResized.mockResolvedValue(vi.fn())
     window.__tolariaFrontendReady = false
     sessionStorage.clear()
   })
@@ -165,6 +181,19 @@ describe('main entrypoint', () => {
     })
 
     expect(document.body).toHaveClass('mac-chrome')
+  }, 60_000)
+
+  it('marks native macOS fullscreen chrome so traffic-light offsets can collapse', async () => {
+    ;(globalThis as { isTauri?: boolean }).isTauri = true
+    mocks.isFullscreen.mockResolvedValue(true)
+
+    await withUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 Safari/605.1.15', async () => {
+      await importEntrypoint()
+    })
+    await waitForAsyncEffects()
+
+    expect(document.body).toHaveClass('mac-chrome')
+    expect(document.body).toHaveClass('mac-chrome-fullscreen')
   }, 60_000)
 
   it('does not reserve macOS traffic-light space in browser dev', async () => {

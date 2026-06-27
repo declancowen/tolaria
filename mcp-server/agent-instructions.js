@@ -3,7 +3,7 @@ import path from 'node:path'
 import { vaultContext } from './vault.js'
 
 export async function readAgentInstructions(vaultPath) {
-  const instructionsPath = path.join(vaultPath, 'AGENTS.md')
+  const instructionsPath = path.join(vaultPath, '.laputa', 'agents', 'AGENTS.md')
   try {
     return {
       path: instructionsPath,

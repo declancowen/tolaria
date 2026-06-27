@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 
 use super::getting_started::{agents_content_is_known_managed_template, AGENTS_MD};
 
+const GUIDANCE_DIR: &str = ".laputa/agents";
+
 /// Content for `type.md` — describes the generic Type metamodel for the vault.
 const TYPE_TYPE_DEFINITION: &str = "\
 ---
@@ -53,9 +55,9 @@ type: Note
 _organized: true
 ---
 
-@AGENTS.md
+@.laputa/agents/AGENTS.md
 
-This file is only a Claude Code compatibility shim. Keep shared agent instructions in `AGENTS.md`.
+This file is only a Claude Code compatibility shim. Keep shared agent instructions in `.laputa/agents/AGENTS.md`.
 ";
 
 const GEMINI_MD_SHIM: &str = "---
@@ -63,9 +65,9 @@ type: Note
 _organized: true
 ---
 
-@AGENTS.md
+@.laputa/agents/AGENTS.md
 
-This file is only a Gemini CLI compatibility shim. Keep shared agent instructions in `AGENTS.md`.
+This file is only a Gemini CLI compatibility shim. Keep shared agent instructions in `.laputa/agents/AGENTS.md`.
 ";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -93,7 +95,7 @@ struct GuidancePaths {
 
 #[derive(Debug, Default)]
 struct LegacyAgentsMigrationOutcome {
-    copied_to_root: bool,
+    copied_to_hidden: bool,
     removed_legacy: bool,
 }
 
@@ -155,6 +157,10 @@ fn sync_managed_file(
         return Ok(false);
     }
 
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create {}: {e}", parent.display()))?;
+    }
     fs::write(path, content).map_err(|e| format!("Failed to write {}: {e}", path.display()))?;
     Ok(true)
 }
@@ -209,10 +215,11 @@ fn classify_guidance_file(
 }
 
 fn guidance_paths(vault_path: &Path) -> GuidancePaths {
+    let guidance_dir = vault_path.join(GUIDANCE_DIR);
     GuidancePaths {
-        agents: vault_path.join("AGENTS.md"),
-        claude: vault_path.join("CLAUDE.md"),
-        gemini: vault_path.join("GEMINI.md"),
+        agents: guidance_dir.join("AGENTS.md"),
+        claude: guidance_dir.join("CLAUDE.md"),
+        gemini: guidance_dir.join("GEMINI.md"),
     }
 }
 
@@ -278,7 +285,7 @@ fn sync_all_ai_guidance_files(vault_path: &Path) -> Result<bool, String> {
 }
 
 fn migrate_legacy_agents_file(
-    root_agents: &Path,
+    managed_agents: &Path,
     config_agents: &Path,
 ) -> Result<LegacyAgentsMigrationOutcome, String> {
     let mut outcome = LegacyAgentsMigrationOutcome::default();
@@ -287,10 +294,14 @@ fn migrate_legacy_agents_file(
     }
 
     let config_content = read_file_or_empty(config_agents);
-    if !config_content.is_empty() && root_agents_can_be_replaced(root_agents) {
-        fs::write(root_agents, &config_content)
-            .map_err(|e| format!("Failed to write AGENTS.md: {e}"))?;
-        outcome.copied_to_root = true;
+    if !config_content.is_empty() && root_agents_can_be_replaced(managed_agents) {
+        if let Some(parent) = managed_agents.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create {}: {e}", parent.display()))?;
+        }
+        fs::write(managed_agents, &config_content)
+            .map_err(|e| format!("Failed to write {}: {e}", managed_agents.display()))?;
+        outcome.copied_to_hidden = true;
     }
 
     fs::remove_file(config_agents)
@@ -298,6 +309,66 @@ fn migrate_legacy_agents_file(
     outcome.removed_legacy = true;
 
     Ok(outcome)
+}
+
+fn legacy_guidance_path(vault: &Path, filename: &str) -> PathBuf {
+    vault.join(filename)
+}
+
+fn move_legacy_guidance_file(
+    legacy_path: &Path,
+    managed_path: &Path,
+    can_replace_managed: fn(&Path) -> bool,
+    can_remove_legacy: fn(&Path) -> bool,
+) -> Result<bool, String> {
+    if !legacy_path.exists() {
+        return Ok(false);
+    }
+
+    let legacy_content = read_file_or_empty(legacy_path);
+    let copied = if !legacy_content.trim().is_empty() && can_replace_managed(managed_path) {
+        if let Some(parent) = managed_path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create {}: {e}", parent.display()))?;
+        }
+        fs::write(managed_path, legacy_content)
+            .map_err(|e| format!("Failed to write {}: {e}", managed_path.display()))?;
+        true
+    } else {
+        false
+    };
+
+    if copied || can_remove_legacy(legacy_path) {
+        fs::remove_file(legacy_path)
+            .map_err(|e| format!("Failed to remove {}: {e}", legacy_path.display()))?;
+        return Ok(true);
+    }
+
+    Ok(copied)
+}
+
+fn migrate_root_guidance_files(vault: &Path) -> Result<bool, String> {
+    let managed = guidance_paths(vault);
+    let moved_agents = move_legacy_guidance_file(
+        &legacy_guidance_path(vault, "AGENTS.md"),
+        &managed.agents,
+        root_agents_can_be_replaced,
+        root_agents_can_be_replaced,
+    )?;
+    let moved_claude = move_legacy_guidance_file(
+        &legacy_guidance_path(vault, "CLAUDE.md"),
+        &managed.claude,
+        claude_shim_can_be_replaced,
+        claude_shim_can_be_replaced,
+    )?;
+    let moved_gemini = move_legacy_guidance_file(
+        &legacy_guidance_path(vault, "GEMINI.md"),
+        &managed.gemini,
+        gemini_shim_can_be_replaced,
+        gemini_shim_can_be_replaced,
+    )?;
+
+    Ok(moved_agents || moved_claude || moved_gemini)
 }
 
 fn cleanup_empty_config_dir(vault: &Path) -> Result<bool, String> {
@@ -334,16 +405,18 @@ pub fn restore_ai_guidance_files(
     vault_path: impl AsRef<str>,
 ) -> Result<VaultAiGuidanceStatus, String> {
     let vault_path = Path::new(vault_path.as_ref());
+    migrate_root_guidance_files(vault_path)?;
     sync_all_ai_guidance_files(vault_path)?;
     Ok(build_ai_guidance_status(vault_path))
 }
 
-/// Seed `AGENTS.md` at vault root if missing or empty (idempotent, per-file).
+/// Seed hidden managed AI guidance if missing or empty (idempotent, per-file).
 /// Also seeds Tolaria-managed root type definitions used by repair/bootstrap flows.
 pub fn seed_config_files(vault_path: impl AsRef<str>) {
     let vault_path = Path::new(vault_path.as_ref());
+    let _ = migrate_root_guidance_files(vault_path);
     if sync_required_ai_guidance_files(vault_path).unwrap_or(false) {
-        log::info!("Seeded vault AI guidance files at vault root");
+        log::info!("Seeded vault AI guidance files in hidden system folder");
     }
 
     ensure_root_type_definitions(vault_path);
@@ -360,22 +433,24 @@ fn ensure_root_type_definitions(vault_path: &Path) {
     ensure_root_type_definition(vault_path, "note.md", NOTE_TYPE_DEFINITION);
 }
 
-/// Migrate legacy `config/agents.md` → root `AGENTS.md` for existing vaults.
+/// Migrate legacy `config/agents.md` → hidden managed `AGENTS.md` for existing vaults.
 ///
-/// - If `config/agents.md` has real content and root `AGENTS.md` is missing/empty/stub:
-///   move content to root, remove legacy file.
-/// - If root `AGENTS.md` doesn't exist: write defaults.
+/// - If `config/agents.md` has real content and managed `AGENTS.md` is missing/empty/stub:
+///   move content to hidden managed guidance, remove legacy file.
+/// - If managed `AGENTS.md` doesn't exist: write defaults.
 /// - Cleans up empty `config/` directory after migration.
 ///
 /// Always idempotent and silent.
 pub fn migrate_agents_md(vault_path: impl AsRef<str>) {
     let vault = Path::new(vault_path.as_ref());
-    let root_agents = vault.join("AGENTS.md");
+    let managed_agents = guidance_paths(vault).agents;
     let config_agents = vault.join("config").join("agents.md");
 
-    if let Ok(outcome) = migrate_legacy_agents_file(&root_agents, &config_agents) {
-        if outcome.copied_to_root {
-            log::info!("Migrated config/agents.md content to root AGENTS.md");
+    let _ = migrate_root_guidance_files(vault);
+
+    if let Ok(outcome) = migrate_legacy_agents_file(&managed_agents, &config_agents) {
+        if outcome.copied_to_hidden {
+            log::info!("Migrated config/agents.md content to hidden AGENTS.md");
         }
         if outcome.removed_legacy {
             log::info!("Removed legacy config/agents.md");
@@ -389,15 +464,16 @@ pub fn migrate_agents_md(vault_path: impl AsRef<str>) {
     let _ = sync_required_ai_guidance_files(vault);
 }
 
-/// Repair config files: ensure `AGENTS.md` at vault root and root type definitions.
-/// Migrates legacy `config/agents.md` to root if present.
+/// Repair config files: ensure hidden managed guidance and root type definitions.
+/// Migrates legacy `config/agents.md` to hidden managed guidance if present.
 /// Called by the "Repair Vault" command. Returns a status message.
 pub fn repair_config_files(vault_path: impl AsRef<str>) -> Result<String, String> {
     let vault = Path::new(vault_path.as_ref());
-    let root_agents = vault.join("AGENTS.md");
+    let managed_agents = guidance_paths(vault).agents;
     let config_agents = vault.join("config").join("agents.md");
 
-    migrate_legacy_agents_file(&root_agents, &config_agents)?;
+    migrate_root_guidance_files(vault)?;
+    migrate_legacy_agents_file(&managed_agents, &config_agents)?;
     let _ = cleanup_empty_config_dir(vault)?;
     sync_required_ai_guidance_files(vault)?;
 
@@ -434,24 +510,42 @@ mod tests {
         fs::write(vault.join("CLAUDE.md"), content).unwrap();
     }
 
-    fn write_root_gemini(vault: &Path, content: &str) {
-        fs::write(vault.join("GEMINI.md"), content).unwrap();
+    fn managed_guidance_path(vault: &Path, filename: &str) -> PathBuf {
+        vault.join(GUIDANCE_DIR).join(filename)
+    }
+
+    fn write_managed_agents(vault: &Path, content: &str) {
+        let path = managed_guidance_path(vault, "AGENTS.md");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, content).unwrap();
+    }
+
+    fn write_managed_claude(vault: &Path, content: &str) {
+        let path = managed_guidance_path(vault, "CLAUDE.md");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, content).unwrap();
+    }
+
+    fn write_managed_gemini(vault: &Path, content: &str) {
+        let path = managed_guidance_path(vault, "GEMINI.md");
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, content).unwrap();
     }
 
     fn write_legacy_agents(vault: &Path, content: &str) {
         fs::write(config_dir(vault).join("agents.md"), content).unwrap();
     }
 
-    fn read_root_agents(vault: &Path) -> String {
-        fs::read_to_string(vault.join("AGENTS.md")).unwrap()
+    fn read_managed_agents(vault: &Path) -> String {
+        fs::read_to_string(managed_guidance_path(vault, "AGENTS.md")).unwrap()
     }
 
-    fn read_root_claude(vault: &Path) -> String {
-        fs::read_to_string(vault.join("CLAUDE.md")).unwrap()
+    fn read_managed_claude(vault: &Path) -> String {
+        fs::read_to_string(managed_guidance_path(vault, "CLAUDE.md")).unwrap()
     }
 
-    fn read_root_gemini(vault: &Path) -> String {
-        fs::read_to_string(vault.join("GEMINI.md")).unwrap()
+    fn read_managed_gemini(vault: &Path) -> String {
+        fs::read_to_string(managed_guidance_path(vault, "GEMINI.md")).unwrap()
     }
 
     type VaultOperation = fn(&Path);
@@ -493,9 +587,10 @@ mod tests {
         );
 
         assert!(
-            read_root_agents(&vault).contains("Custom Agent Config"),
+            read_managed_agents(&vault).contains("Custom Agent Config"),
             "must preserve existing content"
         );
+        assert!(!vault.join("AGENTS.md").exists());
     }
 
     fn assert_preserves_edited_default_agents(run: VaultOperation) {
@@ -506,22 +601,23 @@ mod tests {
         );
         let (_dir, vault) = run_with_agents(run, Some(&edited_agents), None);
 
-        let content = read_root_agents(&vault);
+        let content = read_managed_agents(&vault);
         assert!(content.contains("Tolaria still understands legacy aliases such as `Is A`."));
         assert!(!content.contains("Store note type in the `type:` frontmatter field."));
+        assert!(!vault.join("AGENTS.md").exists());
     }
 
-    fn assert_legacy_agents_move_to_root(
+    fn assert_legacy_agents_move_to_hidden(
         run: VaultOperation,
         legacy_agents: &str,
-        expected_root_text: &str,
+        expected_hidden_text: &str,
         expect_config_dir_removed: bool,
     ) {
         let (_dir, vault) = run_with_agents(run, None, Some(legacy_agents));
 
         let config_dir = vault.join("config");
-        let root_content = read_root_agents(&vault);
-        assert!(root_content.contains(expected_root_text));
+        let hidden_content = read_managed_agents(&vault);
+        assert!(hidden_content.contains(expected_hidden_text));
         assert!(!config_dir.join("agents.md").exists());
         assert_eq!(config_dir.exists(), !expect_config_dir_removed);
     }
@@ -537,18 +633,20 @@ mod tests {
             Some(legacy_agents),
         );
 
-        let content = read_root_agents(&vault);
+        let content = read_managed_agents(&vault);
         assert!(content.contains(expected_root_text));
     }
 
     fn assert_required_agents_file_seeded(vault: &Path) {
-        assert!(vault.join("AGENTS.md").exists());
-        assert!(read_root_agents(vault).contains("Tolaria Vault"));
+        assert!(managed_guidance_path(vault, "AGENTS.md").exists());
+        assert!(read_managed_agents(vault).contains("Tolaria Vault"));
+        assert!(!vault.join("AGENTS.md").exists());
     }
 
     fn assert_required_guidance_shims_seeded(vault: &Path) {
-        assert_eq!(read_root_claude(vault), CLAUDE_MD_SHIM);
-        assert!(!vault.join("GEMINI.md").exists());
+        assert_eq!(read_managed_claude(vault), CLAUDE_MD_SHIM);
+        assert!(!managed_guidance_path(vault, "GEMINI.md").exists());
+        assert!(!vault.join("CLAUDE.md").exists());
     }
 
     fn assert_required_guidance_files_seeded(vault: &Path) {
@@ -581,7 +679,7 @@ mod tests {
     }
 
     #[test]
-    fn test_seed_config_files_creates_guidance_files_at_root() {
+    fn test_seed_config_files_creates_guidance_files_in_hidden_system_folder() {
         let (_dir, vault) = create_vault();
 
         seed_config_files(vault.to_str().unwrap());
@@ -610,7 +708,8 @@ mod tests {
         write_root_agents(&vault, "");
 
         seed_config_files(vault.to_str().unwrap());
-        assert!(read_root_agents(&vault).contains("Tolaria Vault"));
+        assert!(read_managed_agents(&vault).contains("Tolaria Vault"));
+        assert!(!vault.join("AGENTS.md").exists());
     }
 
     #[test]
@@ -623,9 +722,10 @@ mod tests {
 
         seed_config_files(vault.to_str().unwrap());
 
-        let content = read_root_agents(&vault);
+        let content = read_managed_agents(&vault);
         assert!(content.contains("Do not add `title:` frontmatter."));
         assert!(!content.contains("Use the first H1 as the note title."));
+        assert!(!vault.join("AGENTS.md").exists());
     }
 
     #[test]
@@ -640,7 +740,8 @@ mod tests {
 
         seed_config_files(vault.to_str().unwrap());
 
-        assert!(read_root_claude(&vault).contains("Custom Claude instructions"));
+        assert!(read_managed_claude(&vault).contains("Custom Claude instructions"));
+        assert!(!vault.join("CLAUDE.md").exists());
     }
 
     #[test]
@@ -650,12 +751,13 @@ mod tests {
 
         seed_config_files(vault.to_str().unwrap());
 
-        assert_eq!(read_root_claude(&vault), CLAUDE_MD_SHIM);
+        assert_eq!(read_managed_claude(&vault), CLAUDE_MD_SHIM);
+        assert!(!vault.join("CLAUDE.md").exists());
     }
 
     #[test]
-    fn test_migrate_agents_md_moves_config_to_root() {
-        assert_legacy_agents_move_to_root(
+    fn test_migrate_agents_md_moves_config_to_hidden_system_folder() {
+        assert_legacy_agents_move_to_hidden(
             run_migrate,
             "# My vault agent instructions\nCustom content\n",
             "My vault agent instructions",
@@ -672,8 +774,9 @@ mod tests {
         migrate_agents_md(vault.to_str().unwrap());
 
         let config_dir = vault.join("config");
-        let content = read_root_agents(&vault);
+        let content = read_managed_agents(&vault);
         assert!(content.contains("My root agent config"));
+        assert!(!vault.join("AGENTS.md").exists());
         assert!(!config_dir.join("agents.md").exists());
     }
 
@@ -692,10 +795,10 @@ mod tests {
 
         migrate_agents_md(vault.to_str().unwrap());
 
-        assert!(vault.join("AGENTS.md").exists());
-        let root = read_root_agents(&vault);
-        assert!(root.contains("Tolaria Vault"));
-        assert_eq!(read_root_claude(&vault), CLAUDE_MD_SHIM);
+        assert!(managed_guidance_path(&vault, "AGENTS.md").exists());
+        let hidden = read_managed_agents(&vault);
+        assert!(hidden.contains("Tolaria Vault"));
+        assert_eq!(read_managed_claude(&vault), CLAUDE_MD_SHIM);
     }
 
     #[test]
@@ -734,7 +837,7 @@ mod tests {
 
     #[test]
     fn test_repair_config_files_migrates_legacy_config() {
-        assert_legacy_agents_move_to_root(
+        assert_legacy_agents_move_to_hidden(
             run_repair,
             "# My vault agent instructions\nCustom content\n",
             "My vault agent instructions",
@@ -759,8 +862,8 @@ mod tests {
     #[test]
     fn test_get_ai_guidance_status_reports_custom_and_repairable_files() {
         let (_dir, vault) = create_vault();
-        write_root_agents(&vault, "# Custom Agent Config\nHands off\n");
-        write_root_claude(&vault, "");
+        write_managed_agents(&vault, "# Custom Agent Config\nHands off\n");
+        write_managed_claude(&vault, "");
 
         let status = get_ai_guidance_status(vault.to_str().unwrap()).unwrap();
         assert_eq!(
@@ -779,9 +882,9 @@ mod tests {
         let (_dir, vault) = create_vault();
         let edited_agents = AGENTS_MD.replacen("type: Note", "type: Vault Guidance", 1)
             + "\n\n- Prefer the user's vault-specific naming conventions.\n";
-        write_root_agents(&vault, &edited_agents);
-        write_root_claude(&vault, CLAUDE_MD_SHIM);
-        write_root_gemini(&vault, GEMINI_MD_SHIM);
+        write_managed_agents(&vault, &edited_agents);
+        write_managed_claude(&vault, CLAUDE_MD_SHIM);
+        write_managed_gemini(&vault, GEMINI_MD_SHIM);
 
         let status = get_ai_guidance_status(vault.to_str().unwrap()).unwrap();
 
@@ -799,9 +902,9 @@ mod tests {
     #[test]
     fn test_get_ai_guidance_status_reports_frontmatter_only_agents_as_broken() {
         let (_dir, vault) = create_vault();
-        write_root_agents(&vault, "---\ntype: Vault Guidance\n---\n");
-        write_root_claude(&vault, CLAUDE_MD_SHIM);
-        write_root_gemini(&vault, GEMINI_MD_SHIM);
+        write_managed_agents(&vault, "---\ntype: Vault Guidance\n---\n");
+        write_managed_claude(&vault, CLAUDE_MD_SHIM);
+        write_managed_gemini(&vault, GEMINI_MD_SHIM);
 
         let status = get_ai_guidance_status(vault.to_str().unwrap()).unwrap();
 
@@ -832,9 +935,11 @@ mod tests {
                 can_restore: false,
             }
         );
-        assert!(read_root_agents(&vault).contains("Custom Agent Config"));
-        assert_eq!(read_root_claude(&vault), CLAUDE_MD_SHIM);
-        assert_eq!(read_root_gemini(&vault), GEMINI_MD_SHIM);
+        assert!(read_managed_agents(&vault).contains("Custom Agent Config"));
+        assert_eq!(read_managed_claude(&vault), CLAUDE_MD_SHIM);
+        assert_eq!(read_managed_gemini(&vault), GEMINI_MD_SHIM);
+        assert!(!vault.join("AGENTS.md").exists());
+        assert!(!vault.join("CLAUDE.md").exists());
     }
 
     #[test]
@@ -857,14 +962,14 @@ mod tests {
     #[test]
     fn test_restore_ai_guidance_files_preserves_custom_gemini() {
         let (_dir, vault) = create_vault();
-        write_root_agents(&vault, AGENTS_MD);
-        write_root_claude(&vault, CLAUDE_MD_SHIM);
-        write_root_gemini(&vault, "# Custom Gemini instructions\nDo not overwrite\n");
+        write_managed_agents(&vault, AGENTS_MD);
+        write_managed_claude(&vault, CLAUDE_MD_SHIM);
+        write_managed_gemini(&vault, "# Custom Gemini instructions\nDo not overwrite\n");
 
         let status = restore_ai_guidance_files(vault.to_str().unwrap()).unwrap();
 
         assert_eq!(status.gemini_state, AiGuidanceFileState::Custom);
         assert!(!status.can_restore);
-        assert!(read_root_gemini(&vault).contains("Custom Gemini instructions"));
+        assert!(read_managed_gemini(&vault).contains("Custom Gemini instructions"));
     }
 }

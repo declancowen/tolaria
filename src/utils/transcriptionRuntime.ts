@@ -13,9 +13,10 @@ export type RecordedAudioTranscription = {
 }
 
 export type RecordingCapture = {
+  flush: () => Promise<string | null>
   pause: () => void
   resume: () => void
-  stop: () => Promise<string>
+  stop: () => Promise<string | null>
 }
 
 async function runtimeInvoke<T>(command: string, args: Record<string, unknown>): Promise<T> {
@@ -61,7 +62,7 @@ export async function startRecordingCapture(): Promise<RecordingCapture> {
   const chunks: Float32Array[] = []
   let paused = false
   let stopped = false
-  let stopPromise: Promise<string> | null = null
+  let stopPromise: Promise<string | null> | null = null
 
   processor.onaudioprocess = (event) => {
     if (paused || stopped) return
@@ -76,6 +77,7 @@ export async function startRecordingCapture(): Promise<RecordingCapture> {
   silence.connect(audioContext.destination)
 
   return {
+    flush: () => Promise.resolve(encodeRecordingChunks(consumeAudioChunks(chunks), audioContext.sampleRate)),
     pause: () => {
       paused = true
     },
@@ -99,6 +101,10 @@ export async function startRecordingCapture(): Promise<RecordingCapture> {
   }
 }
 
+function consumeAudioChunks(chunks: Float32Array[]): Float32Array[] {
+  return chunks.splice(0, chunks.length)
+}
+
 async function stopRecordingCapture({
   audioContext,
   chunks,
@@ -115,7 +121,7 @@ async function stopRecordingCapture({
   source: MediaStreamAudioSourceNode
   stream: MediaStream
   stop: () => void
-}): Promise<string> {
+}): Promise<string | null> {
   stop()
   processor.disconnect()
   silence.disconnect()
@@ -123,12 +129,16 @@ async function stopRecordingCapture({
   stream.getTracks().forEach(track => track.stop())
   await audioContext.close().catch(() => undefined)
 
+  return encodeRecordingChunks(consumeAudioChunks(chunks), audioContext.sampleRate)
+}
+
+function encodeRecordingChunks(chunks: Float32Array[], inputSampleRate: number): string | null {
   const mergedSamples = mergeAudioChunks(chunks)
   if (mergedSamples.length === 0) {
-    throw new Error('No microphone audio was captured.')
+    return null
   }
 
-  const wav = encodeWav(downsampleAudio(mergedSamples, audioContext.sampleRate, RECORDING_SAMPLE_RATE), RECORDING_SAMPLE_RATE)
+  const wav = encodeWav(downsampleAudio(mergedSamples, inputSampleRate, RECORDING_SAMPLE_RATE), RECORDING_SAMPLE_RATE)
   return `data:audio/wav;base64,${arrayBufferToBase64(wav)}`
 }
 

@@ -18,7 +18,7 @@ import { GroupByDropdown } from './GroupByDropdown'
 import { ListPropertiesPopover, type ListPropertiesPopoverProps } from './ListPropertiesPopover'
 import { GitRepositorySelect } from '../GitRepositorySelect'
 import type { GitRepositoryOption } from '../../utils/gitRepositories'
-import { MACOS_TRAFFIC_LIGHT_SAFE_PADDING } from '../../utils/platform'
+import { MACOS_TRAFFIC_LIGHT_SAFE_PADDING, shouldReserveMacTrafficLightSpace } from '../../utils/platform'
 import { NOTE_LIST_DISPLAY_MODES, type NoteListDisplayMode } from './noteListDisplayMode'
 
 const NOTE_LIST_ACTION_BUTTON_CLASSNAME = TOOLBAR_ICON_BUTTON_ACCENT_OPEN_IMPORTANT_CLASSNAME
@@ -39,10 +39,6 @@ const DISPLAY_MODE_ICONS = {
   rows: ListChecks,
   cards: Kanban,
 } as const
-
-function hasNativeMacChrome(): boolean {
-  return typeof document !== 'undefined' && document.body.classList.contains('mac-chrome')
-}
 
 const localizePropertiesTriggerTitle = (triggerTitle: string, locale: AppLocale): string => {
   const titleKey = PROPERTY_TRIGGER_TITLE_KEYS[triggerTitle]
@@ -381,7 +377,7 @@ export function NoteListHeader({
   onGitRepositoryChange,
 }: NoteListHeaderProps) {
   const { dragRegionRef } = useDragRegion<HTMLDivElement>()
-  const collapsedSidebarPadding = sidebarCollapsed && hasNativeMacChrome()
+  const collapsedSidebarPadding = sidebarCollapsed && shouldReserveMacTrafficLightSpace()
     ? MACOS_TRAFFIC_LIGHT_SAFE_PADDING
     : undefined
 

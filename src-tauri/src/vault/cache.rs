@@ -13,7 +13,9 @@ use super::path_identity::{
     normalize_path_for_identity, push_unique_relative_path, relative_path_key,
     vault_relative_path_string,
 };
-use super::{is_hidden_vault_file, is_md_file, parse_md_file, parse_non_md_file, scan_vault, VaultEntry};
+use super::{
+    is_hidden_vault_file, is_md_file, parse_md_file, parse_non_md_file, scan_vault, VaultEntry,
+};
 
 // --- Vault Cache ---
 

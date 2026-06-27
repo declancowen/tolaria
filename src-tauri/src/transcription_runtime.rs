@@ -10,7 +10,9 @@ pub fn transcribe_recorded_audio(audio_base64: String, model_id: String) -> Resu
         return Err("Download the selected transcription model before recording.".to_string());
     }
     if model.definition.engine != "whisper" {
-        return Err("This transcription model is not available for local recording yet.".to_string());
+        return Err(
+            "This transcription model is not available for local recording yet.".to_string(),
+        );
     }
 
     let model_path = whisper_model_artifact(&model)?;
@@ -19,7 +21,9 @@ pub fn transcribe_recorded_audio(audio_base64: String, model_id: String) -> Resu
     transcribe_whisper_samples(&model_path, &model.definition.language_mode, &samples)
 }
 
-fn whisper_model_artifact(model: &crate::transcription_models::TranscriptionModelStatus) -> Result<PathBuf, String> {
+fn whisper_model_artifact(
+    model: &crate::transcription_models::TranscriptionModelStatus,
+) -> Result<PathBuf, String> {
     let model_dir = model
         .path
         .as_ref()

@@ -263,8 +263,9 @@ describe('vaultContext', () => {
     assert.equal(ctx.noteCount, 4)
   })
 
-  it('includes root AGENTS.md instructions when present', async () => {
-    const agentsPath = path.join(tmpDir, 'AGENTS.md')
+  it('includes hidden managed AGENTS.md instructions when present', async () => {
+    const agentsPath = path.join(tmpDir, '.laputa', 'agents', 'AGENTS.md')
+    await mkdir(path.dirname(agentsPath), { recursive: true })
     await writeFile(agentsPath, '# Vault Rules\n\nUse this vault carefully.\n', 'utf-8')
 
     try {

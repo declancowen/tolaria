@@ -225,8 +225,9 @@ jobs:
           VERSION="${{ needs.version.outputs.version }}"
           TAG="${{ needs.version.outputs.tag }}"
           REPO="${GITHUB_REPOSITORY}"
+          REPO_OWNER="${REPO%/*}"
           REPO_NAME="${REPO#*/}"
-          PAGES_URL="https://refactoringhq.github.io/${REPO_NAME}/"
+          PAGES_URL="https://${REPO_OWNER}.github.io/${REPO_NAME}/"
 
           find_required() {
             for pattern in "$@"; do

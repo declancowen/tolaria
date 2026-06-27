@@ -659,9 +659,18 @@ mod tests {
 
     fn write_tolaria_config_files(path: &Path) {
         fs::create_dir_all(path).unwrap();
-        fs::write(path.join("AGENTS.md"), AGENTS_MD).unwrap();
+        fs::create_dir_all(path.join(".laputa").join("agents")).unwrap();
+        fs::write(
+            path.join(".laputa").join("agents").join("AGENTS.md"),
+            AGENTS_MD,
+        )
+        .unwrap();
         fs::write(path.join("type.md"), "# Type\n").unwrap();
         fs::write(path.join("note.md"), "# Note\n").unwrap();
+    }
+
+    fn managed_agents_path(path: &Path) -> PathBuf {
+        path.join(".laputa").join("agents").join("AGENTS.md")
     }
 
     fn assert_getting_started_vault_replaces_template(agents_content: &str) {
@@ -672,8 +681,9 @@ mod tests {
 
         create_getting_started_vault_from_repo(dest.as_path(), source.to_str().unwrap()).unwrap();
 
-        let content = fs::read_to_string(dest.join("AGENTS.md")).unwrap();
+        let content = fs::read_to_string(managed_agents_path(&dest)).unwrap();
         assert_eq!(content, AGENTS_MD);
+        assert!(!dest.join("AGENTS.md").exists());
         assert!(dest.join("type.md").exists());
         assert!(dest.join("note.md").exists());
     }
@@ -736,9 +746,10 @@ mod tests {
         assert!(dest.join("views").join("active-projects.yml").exists());
         assert!(dest.join(".git").exists());
         assert_eq!(
-            fs::read_to_string(dest.join("AGENTS.md")).unwrap(),
+            fs::read_to_string(managed_agents_path(&dest)).unwrap(),
             AGENTS_MD
         );
+        assert!(!dest.join("AGENTS.md").exists());
         assert!(dest.join("type.md").exists());
         assert!(dest.join("note.md").exists());
     }

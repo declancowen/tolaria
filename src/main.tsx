@@ -18,7 +18,11 @@ import {
 } from './hooks/appCommandCatalog'
 import { isRecoverableBlockNoteRenderError } from './components/blockNoteRenderRecovery'
 import { isRecoveredActionTooltipError } from './components/ui/actionTooltipRecovery'
-import { shouldUseCustomWindowChrome, shouldUseMacTrafficLightChrome } from './utils/platform'
+import {
+  MACOS_FULLSCREEN_CHROME_CLASS,
+  shouldUseCustomWindowChrome,
+  shouldUseMacTrafficLightChrome,
+} from './utils/platform'
 import { reloadFrontendOnceIfStartupFailed } from './utils/frontendReady'
 
 const TLDRAW_CONTEXT_MENU_SELECTOR = '.tldraw-whiteboard'
@@ -66,6 +70,28 @@ if (shouldUseCustomWindowChrome()) {
 
 if (shouldUseMacTrafficLightChrome()) {
   document.body.classList.add('mac-chrome')
+  void syncMacFullscreenChromeClass()
+}
+
+async function syncMacFullscreenChromeClass(): Promise<void> {
+  if (!shouldUseMacTrafficLightChrome()) return
+
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window')
+    const appWindow = getCurrentWindow()
+    const applyFullscreenState = async () => {
+      const fullscreen = await appWindow.isFullscreen()
+      document.body.classList.toggle(MACOS_FULLSCREEN_CHROME_CLASS, fullscreen)
+    }
+
+    await applyFullscreenState()
+    const unlistenResize = await appWindow.onResized(applyFullscreenState)
+    window.addEventListener('beforeunload', () => {
+      void unlistenResize()
+    }, { once: true })
+  } catch {
+    document.body.classList.remove(MACOS_FULLSCREEN_CHROME_CLASS)
+  }
 }
 
 applyStoredThemeMode(document, window.localStorage)

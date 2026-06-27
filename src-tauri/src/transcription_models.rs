@@ -172,7 +172,9 @@ fn copy_response_to_file(url: &str, target: &Path) -> Result<(), String> {
     Ok(())
 }
 
-pub fn download_transcription_model(model_id: String) -> Result<TranscriptionModelInstallResult, String> {
+pub fn download_transcription_model(
+    model_id: String,
+) -> Result<TranscriptionModelInstallResult, String> {
     let definition = find_model(&model_id)?;
     let root = model_root()?;
     let dir = model_dir(&root, &definition.id);
@@ -186,8 +188,9 @@ pub fn download_transcription_model(model_id: String) -> Result<TranscriptionMod
         }
         let partial = dir.join(format!("{}.download", artifact.filename));
         if partial.exists() {
-            fs::remove_file(&partial)
-                .map_err(|error| format!("Failed to clear partial transcription model download: {error}"))?;
+            fs::remove_file(&partial).map_err(|error| {
+                format!("Failed to clear partial transcription model download: {error}")
+            })?;
         }
         copy_response_to_file(&artifact.url, &partial)?;
         fs::rename(&partial, &target)
@@ -199,7 +202,9 @@ pub fn download_transcription_model(model_id: String) -> Result<TranscriptionMod
     })
 }
 
-pub fn delete_transcription_model(model_id: String) -> Result<TranscriptionModelInstallResult, String> {
+pub fn delete_transcription_model(
+    model_id: String,
+) -> Result<TranscriptionModelInstallResult, String> {
     let definition = find_model(&model_id)?;
     let root = model_root()?;
     let dir = model_dir(&root, &definition.id);
@@ -220,8 +225,12 @@ mod tests {
     #[test]
     fn model_catalog_contains_runnable_english_and_multilingual_options() {
         let catalog = model_catalog();
-        assert!(catalog.iter().any(|model| model.engine == "whisper" && model.language_mode == "english"));
-        assert!(catalog.iter().any(|model| model.engine == "whisper" && model.language_mode == "multilingual"));
+        assert!(catalog
+            .iter()
+            .any(|model| model.engine == "whisper" && model.language_mode == "english"));
+        assert!(catalog
+            .iter()
+            .any(|model| model.engine == "whisper" && model.language_mode == "multilingual"));
         assert!(catalog.iter().all(|model| model.engine == "whisper"));
     }
 

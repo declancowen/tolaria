@@ -396,8 +396,9 @@ mod tests {
         assert_eq!(restored.gemini_state, AiGuidanceFileState::Managed);
         assert!(!restored.can_restore);
 
-        assert!(dir.path().join("AGENTS.md").exists());
-        assert!(dir.path().join("CLAUDE.md").exists());
-        assert!(dir.path().join("GEMINI.md").exists());
+        assert!(dir.path().join(".laputa/agents/AGENTS.md").exists());
+        assert!(dir.path().join(".laputa/agents/CLAUDE.md").exists());
+        assert!(dir.path().join(".laputa/agents/GEMINI.md").exists());
+        assert!(!dir.path().join("AGENTS.md").exists());
     }
 }

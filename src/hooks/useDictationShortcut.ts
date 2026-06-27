@@ -62,7 +62,9 @@ export function useDictationShortcut({
     try {
       onToast(translate(locale, 'editor.dictation.transcribing'))
       const audioBase64 = await capture.stop()
-      const result = await transcribeRecordedAudio(modelId, audioBase64)
+      const result = audioBase64
+        ? await transcribeRecordedAudio(modelId, audioBase64)
+        : { transcript: '' }
       const committed = await commitDictationText(result.transcript)
 
       if (!result.transcript.trim()) {
@@ -125,6 +127,7 @@ export function useDictationShortcut({
     try {
       captureRef.current = await startRecordingCapture()
       activeModelIdRef.current = modelId
+      setDictating(true)
       onToast(translate(locale, 'editor.dictation.listening'))
       trackEvent('dictation_started', { key: dictationKey, mode: dictationMode, model_id: modelId })
     } catch (err) {
@@ -138,7 +141,6 @@ export function useDictationShortcut({
     if (dictationMode === 'push_to_talk') {
       pushToTalkActiveRef.current = true
     }
-    setDictating(true)
   })
 
   const stopPushToTalk = useEffectEvent(async (event: KeyboardEvent) => {
@@ -164,5 +166,8 @@ export function useDictationShortcut({
     captureRef.current = null
     activeModelIdRef.current = null
     pushToTalkActiveRef.current = false
+    setDictating(false)
   }, [])
+
+  return { dictating }
 }

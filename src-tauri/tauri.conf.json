@@ -85,7 +85,7 @@
     },
     "updater": {
       "endpoints": [
-        "https://refactoringhq.github.io/tolaria/stable/latest.json"
+        "https://declancowen.github.io/tolaria/stable/latest.json"
       ],
       "windows": {
         "installMode": "passive"

@@ -57,11 +57,19 @@ fn test_scan_vault_folders_flat_vault() {
 }
 
 #[test]
-fn test_scan_vault_hides_root_ai_guidance_files() {
+fn test_scan_vault_hides_managed_ai_guidance_folder() {
     let dir = TempDir::new().unwrap();
-    create_test_file(dir.path(), "AGENTS.md", "# Agent guidance\n");
-    create_test_file(dir.path(), "CLAUDE.md", "# Claude guidance\n");
-    create_test_file(dir.path(), "projects/AGENTS.md", "# Project agent guidance\n");
+    create_test_file(dir.path(), ".laputa/agents/AGENTS.md", "# Agent guidance\n");
+    create_test_file(
+        dir.path(),
+        ".laputa/agents/CLAUDE.md",
+        "# Claude guidance\n",
+    );
+    create_test_file(
+        dir.path(),
+        "projects/AGENTS.md",
+        "# Project agent guidance\n",
+    );
     create_test_file(dir.path(), "note.md", "# Note\n");
 
     let entries = scan_vault(dir.path(), &std::collections::HashMap::new()).unwrap();
@@ -72,8 +80,8 @@ fn test_scan_vault_hides_root_ai_guidance_files() {
         })
         .collect();
 
-    assert!(!paths.contains(&"AGENTS.md".to_string()));
-    assert!(!paths.contains(&"CLAUDE.md".to_string()));
+    assert!(!paths.contains(&".laputa/agents/AGENTS.md".to_string()));
+    assert!(!paths.contains(&".laputa/agents/CLAUDE.md".to_string()));
     assert!(paths.contains(&"projects/AGENTS.md".to_string()));
     assert!(paths.contains(&"note.md".to_string()));
 }

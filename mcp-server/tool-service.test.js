@@ -19,7 +19,7 @@ beforeEach(async () => {
     'note/alpha.md': noteFixture('Alpha Project', 'Project planning in the first vault.'),
   })
   await seedVault(secondVault, {
-    'AGENTS.md': '# Second Vault Rules\n',
+    '.laputa/agents/AGENTS.md': '# Second Vault Rules\n',
     'note/shared.md': noteFixture('Shared Note', 'Shared content from the second vault.'),
     'note/beta.md': noteFixture('Beta Project', 'Project planning in the second vault.'),
   })
@@ -105,7 +105,7 @@ describe('createMcpToolService', () => {
         {
           path: secondVault,
           label: 'Second Vault',
-          agentInstructionsPath: path.join(secondVault, 'AGENTS.md'),
+          agentInstructionsPath: path.join(secondVault, '.laputa', 'agents', 'AGENTS.md'),
           hasAgentInstructions: true,
         },
       ],

@@ -1,7 +1,4 @@
-use crate::transcription_models::{
-    TranscriptionModelInstallResult,
-    TranscriptionModelStatus,
-};
+use crate::transcription_models::{TranscriptionModelInstallResult, TranscriptionModelStatus};
 
 #[derive(Debug, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,17 +19,35 @@ pub fn list_transcription_models() -> Result<Vec<TranscriptionModelStatus>, Stri
 }
 
 #[tauri::command]
-pub fn download_transcription_model(model_id: String) -> Result<TranscriptionModelInstallResult, String> {
-    crate::transcription_models::download_transcription_model(model_id)
+pub async fn download_transcription_model(
+    model_id: String,
+) -> Result<TranscriptionModelInstallResult, String> {
+    tokio::task::spawn_blocking(move || {
+        crate::transcription_models::download_transcription_model(model_id)
+    })
+    .await
+    .map_err(|error| format!("Transcription model download task failed: {error}"))?
 }
 
 #[tauri::command]
-pub fn delete_transcription_model(model_id: String) -> Result<TranscriptionModelInstallResult, String> {
-    crate::transcription_models::delete_transcription_model(model_id)
+pub async fn delete_transcription_model(
+    model_id: String,
+) -> Result<TranscriptionModelInstallResult, String> {
+    tokio::task::spawn_blocking(move || {
+        crate::transcription_models::delete_transcription_model(model_id)
+    })
+    .await
+    .map_err(|error| format!("Transcription model delete task failed: {error}"))?
 }
 
 #[tauri::command]
-pub fn transcribe_recorded_audio(args: TranscribeRecordedAudioArgs) -> Result<TranscribeRecordedAudioResult, String> {
-    crate::transcription_runtime::transcribe_recorded_audio(args.audio_base64, args.model_id)
-        .map(|transcript| TranscribeRecordedAudioResult { transcript })
+pub async fn transcribe_recorded_audio(
+    args: TranscribeRecordedAudioArgs,
+) -> Result<TranscribeRecordedAudioResult, String> {
+    tokio::task::spawn_blocking(move || {
+        crate::transcription_runtime::transcribe_recorded_audio(args.audio_base64, args.model_id)
+            .map(|transcript| TranscribeRecordedAudioResult { transcript })
+    })
+    .await
+    .map_err(|error| format!("Local transcription task failed: {error}"))?
 }

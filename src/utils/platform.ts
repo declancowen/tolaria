@@ -1,6 +1,7 @@
 import { isTauri } from '../mock-tauri'
 
 export const MACOS_TRAFFIC_LIGHT_SAFE_PADDING = 90
+export const MACOS_FULLSCREEN_CHROME_CLASS = 'mac-chrome-fullscreen'
 
 function getUserAgent(): string {
   if (typeof navigator === 'undefined') return ''
@@ -27,4 +28,10 @@ export function shouldUseCustomWindowChrome(): boolean {
 
 export function shouldUseMacTrafficLightChrome(): boolean {
   return isTauri() && isMac()
+}
+
+export function shouldReserveMacTrafficLightSpace(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.body.classList.contains('mac-chrome')
+    && !document.body.classList.contains(MACOS_FULLSCREEN_CHROME_CLASS)
 }

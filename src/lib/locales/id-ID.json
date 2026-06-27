@@ -496,7 +496,7 @@
   "mcp.setup.runtimeRequirement": "Penyiapan ini memerlukan Node.js 18+ atau Bun 1+ di PATH dan alat desktop yang kompatibel dengan MCP. Tolaria memeriksa runtime sebelum menulis konfigurasi sehingga alat tidak mengarah ke perintah yang rusak.",
   "mcp.setup.writeEntryDescription": "Mengonfirmasi tindakan ini akan menulis atau memperbarui satu entri MCP {entry} Tolaria di:",
   "mcp.setup.clientPathsDescription": "Claude Code CLI membaca ~/.claude.json, Gemini CLI membaca ~/.gemini/settings.json, Cursor membaca ~/.cursor/mcp.json, dan jalur ~/.config/mcp/mcp.json generik digunakan oleh alat kompatibel MCP lainnya. Menutup tidak menyentuh file apa pun kecuali Anda menghubungkan atau memutuskan sambungan, menghubungkan kembali bersifat idempoten, dan memutuskan sambungan menghapus entri Tolaria lagi.",
-  "mcp.setup.geminiGuidanceDescription": "Gemini CLI memerlukan instalasi dan masuknya sendiri. Gunakan Pulihkan Panduan Tolaria AI ketika Anda menginginkan shim kompatibilitas GEMINI.md di root brankas yang mengarahkan Gemini kembali ke instruksi AGENTS.md bersama tanpa menimpa panduan kustom.",
+  "mcp.setup.geminiGuidanceDescription": "Gemini CLI memerlukan instalasi dan masuknya sendiri. Gunakan Pulihkan Panduan Tolaria AI ketika Anda menginginkan shim kompatibilitas GEMINI.md tersembunyi yang mengarahkan Gemini kembali ke instruksi AGENTS.md bersama tanpa menimpa panduan kustom.",
   "mcp.setup.manual.title": "Konfigurasi MCP Manual",
   "mcp.setup.manual.copy": "Salin konfigurasi MCP",
   "mcp.setup.manual.loading": "Memuat konfigurasi MCP yang tepat...",

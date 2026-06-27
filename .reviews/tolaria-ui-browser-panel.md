@@ -24,6 +24,10 @@
 - `src/hooks/useDictationShortcut.ts` and `src/utils/*recording*` / `src/utils/*transcription*` — added Turn 2
 - `src/components/editorSchema.tsx`, `src/utils/editorDurableMarkdown.ts`, and recording markdown tests — added Turn 2
 - settings, mock Tauri handlers, docs, ADR, and macOS entitlements for local transcription — added Turn 2
+- `src/main.tsx`, `src/utils/platform.ts`, `src/App.css`, `src/components/Editor.css`, and collapsed header tests — added Turn 3
+- `src-tauri/src/vault/config_seed.rs`, `src-tauri/src/vault/getting_started.rs`, vault/MCP guidance readers, and guidance docs — added Turn 3
+- `src-tauri/src/app_updater.rs`, release workflows, and `src-tauri/tauri.conf.json` updater endpoints — added Turn 3
+- live transcription cleanup in `src/components/RecordingTranscriptBlock.tsx`, `src/utils/transcriptionRuntime.ts`, native transcription commands, and persistent dictation toast wiring — added Turn 3
 
 ## Hotspots
 
@@ -35,17 +39,102 @@
 - recording block markdown persistence and editor insertion — added Turn 2
 - dictation clipboard/active-target insertion while recording sessions are mutually exclusive — added Turn 2
 - Tauri microphone permission and Whisper runtime packaging — added Turn 2
+- macOS fullscreen traffic-light offset and collapsed-sidebar header positioning — added Turn 3
+- hard migration of managed guidance into hidden `.laputa/agents/` with restore/MCP parity — added Turn 3
+- chunked live recording transcription and async native model/download commands — added Turn 3
+- fork-owned updater metadata and release feed generation — added Turn 3
 
 ## Review status
 
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-27 01:15:56 BST |
-| **Total turns** | 2 |
+| **Last reviewed** | 2026-06-27 02:45:01 BST |
+| **Total turns** | 3 |
 | **Open findings** | 0 |
-| **Resolved findings** | 8 |
+| **Resolved findings** | 10 |
 | **Accepted findings** | 0 |
+
+## Turn 3 — 2026-06-27 02:45:01 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | 9ea7ebaf plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Re-reviewed the cumulative local work after adding macOS fullscreen sidebar alignment, fork-owned updater/release endpoints, hidden managed guidance migration, async transcription model commands, live chunk transcription, persistent dictation toast behavior, and the packaged-app guidance restore path.
+**Outcome:** all clear after fixing two review findings.
+**Risk score:** high — this pass touches native subprocess/download behavior, vault file migration, MCP instruction discovery, app startup chrome state, and editor recording lifecycle.
+**Change archetypes:** native integration, migration, updater configuration, editor block lifecycle, keyboard/dictation UX, MCP compatibility, docs/ADR.
+**Intended change:** Keep Tolaria guidance hidden but restorable/MCP-readable, stop using upstream release feeds, prevent model downloads/transcription from freezing the UI, show recording transcript chunks during capture, keep dictation feedback visible while recording, and fix full-screen macOS sidebar offsets.
+**Intent vs actual:** The implementation matches the requested direction. Managed guidance now canonicalizes under `.laputa/agents/`, root guidance becomes migration input only, MCP reads the hidden source, and restore writes the hidden source. Release metadata now targets the fork. Recording transcribes queued audio chunks every five seconds and appends the final chunk on stop/resume.
+**Confidence:** high for automated gates; medium for packaged native UX until manual microphone/model-download testing is done in the built app.
+**Coverage note:** Full frontend tests and frontend coverage passed. Rust tests and Rust coverage passed; Rust coverage required rerunning outside the sandbox because coverage-instrumented subprocess tests hit macOS `Operation not permitted` inside the sandbox.
+**Finding triage:** Two medium findings were fixed during this turn: recording block mounted-state cleanup could become stale if a node view was reused for a different block, and Getting Started tests still expected root guidance after the hidden migration.
+**Static/analyzer evidence:** ESLint, TypeScript, full Vitest, frontend coverage, Rust tests, Rust coverage, Rust formatting, locale validation, MCP Node tests, production web build, whitespace check, and demo-vault dirt check passed. CodeScene MCP/CLI and Codacy CLI were unavailable in this environment.
+**Architecture impact:** ADR 0146 makes hidden managed vault guidance canonical and supersedes the previous root-managed guidance ADR. MCP and restore behavior now follow the same source path instead of treating root files as active managed files.
+**Deep-review evidence:** Correctness/safety pass checked fullscreen chrome class synchronization, hidden guidance migration/restore/classification, starter-vault normalization, MCP guidance reads, updater endpoints, async native transcription commands, live recording chunk serialization, and dictation toast lifetime. Maintainability pass checked centralized paths/model metadata, docs/ADR alignment, and test coverage for the changed behavior.
+**Bug classes / invariants checked:** no visible root managed guidance in folder/note scans, custom root guidance is migrated only when hidden guidance can be safely replaced, restore writes to `.laputa/agents/`, MCP context reads hidden guidance, app updater no longer calls upstream releases, model downloads and transcription run off the UI thread, recording cleanup does not update after unmount, dictation remains blocked while editor recording is active, and fullscreen macOS chrome removes traffic-light padding.
+**Branch totality:** Re-read the Turn 3 changes and revisited Turn 2 recording/dictation paths because live chunking changes their lifecycle assumptions.
+**Sibling closure:** Hidden guidance changes were checked across vault seeding, repair, Getting Started clone refresh, vault scanning, MCP server context, docs, and tests. Updater changes were checked across runtime constants, Tauri config, and both release workflows.
+**Remediation impact surface:** Fixes were local: mounted-state reset in the recording block cleanup effect and hidden-path expectations in Getting Started tests.
+**Residual risk / unknowns:** CodeScene and Codacy remain unavailable locally. Manual native QA is still needed after the Apple Silicon build for microphone permission, model download progress, live transcript chunking, and updater metadata in a packaged app.
+
+### Validation
+
+- `pnpm exec vitest run --reporter=dot` — passed, 444 files / 4,753 tests
+- `pnpm test:coverage` — passed
+- `pnpm exec tsc --noEmit` — passed
+- `pnpm lint` — passed
+- `pnpm build` — passed
+- `cargo test --manifest-path src-tauri/Cargo.toml --quiet` — passed, 1,039 passed / 2 ignored plus integration/doc-test lanes
+- `cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-lines 85 --quiet` — passed outside sandbox, lines 85.63%
+- `cargo fmt --manifest-path src-tauri/Cargo.toml --check` — passed after formatting
+- `cargo test --manifest-path src-tauri/Cargo.toml getting_started --quiet` — passed after hidden-path test fix
+- `node --test mcp-server/test.js mcp-server/tool-service.test.js` — passed, 38 tests
+- `pnpm l10n:validate` — passed, 20 locale catalogs / 1,000 English keys
+- `git diff --check` — passed
+- `git status --short -- demo-vault demo-vault-v2` — clean
+- `pnpm l10n:translate` — attempted earlier but blocked by missing `LARA_ACCESS_KEY_ID` / `LARA_ACCESS_KEY_SECRET`; affected locale copy was updated manually and validated
+- CodeScene file/project health — not run; MCP and `cs` CLI unavailable
+- Codacy scan — not run; `.codacy/cli.sh` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `config_seed.rs`, `getting_started.rs`, `vault/mod.rs`, `commands/git.rs`, MCP server guidance readers, updater runtime/config/workflows, `RecordingTranscriptBlock.tsx`, `transcriptionRuntime.ts`, `useDictationShortcut.ts`, `main.tsx`, platform helpers, and collapsed header render tests.
+- **Prior open findings rechecked:** none open from Turns 1 or 2.
+- **Prior resolved/adjacent areas revalidated:** recording/dictation mutual exclusion, no-model recording messaging, model catalog naming, right-panel toast/display state, MCP vault context, and hidden root folder behavior.
+- **Hotspots or sibling paths revisited:** vault guidance migration ran through startup, repair, restore, Getting Started, MCP, folder scan, docs, and tests; live transcription ran through browser capture and native Tauri commands.
+- **Dependency/adjacent surfaces revalidated:** macOS Info.plist/entitlements for microphone were already present, docs/ADR updated, locale catalogs validated, release workflows and Tauri updater config pointed at the fork.
+- **Why this is enough:** The review traced each requested behavior across the user-visible path and its native/runtime persistence boundary, then validated with full frontend/Rust suites, coverage gates, MCP tests, and production build.
+
+### Challenger pass
+
+- `done` — Assumed the hidden guidance migration was incomplete somewhere outside the direct restore path and found Getting Started test expectations still pointing at root `AGENTS.md`. Fixed that and reran the focused and full Rust suites.
+- `done` — Assumed live transcription could leave a stale update path during editor block reuse/unmount. Fixed the mounted-state reset and cleanup behavior.
+
+### Resolved / Carried / New findings
+
+#### B3-1 — Resolved — Medium — `src/components/RecordingTranscriptBlock.tsx`
+
+The mounted guard was initialized once but cleanup could leave it `false` if a reused node view received a new block id. That would silently prevent later live transcript chunks from updating the block.
+
+Resolution: reset `mountedRef.current = true` when the cleanup effect is established, and keep the existing cleanup path for timers, capture, and active-session state.
+
+#### B3-2 — Resolved — Medium — `src-tauri/src/vault/getting_started.rs`
+
+Getting Started clone tests still read `AGENTS.md` at the vault root after the app now migrates managed guidance into `.laputa/agents/AGENTS.md`.
+
+Resolution: updated test helpers and assertions to seed/read the hidden managed guidance path and assert the root managed file is absent.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** run the Apple Silicon packaged app and manually test model download, microphone permission, live transcript chunk appearance before stop, Option+K dictation toast lifetime, and guidance restore warning.
+3. **Patterns noticed:** keep hidden managed guidance source-of-truth logic in `config_seed.rs`; avoid reintroducing root `AGENTS.md` as an active managed source in MCP or setup code.
+4. **Suggested approach:** if live transcript latency needs to feel closer to phrase-by-phrase dictation, lower the chunk interval or introduce a streaming local ASR worker as a separate architecture change.
+5. **Architecture transition:** ADR 0146 supersedes ADR 0065 for hidden managed guidance.
+6. **Defer on purpose:** CodeScene and Codacy evidence is deferred only because the local/MCP entrypoints are unavailable here.
 
 ## Turn 2 — 2026-06-27 01:15:56 BST
 

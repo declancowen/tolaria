@@ -40,7 +40,7 @@
   transition: border-color 0.2s ease;
 }
 
-body.mac-chrome .app:not(:has(.app__sidebar)):not(:has(.app__note-list)) .breadcrumb-bar {
+body.mac-chrome:not(.mac-chrome-fullscreen) .app:not(:has(.app__sidebar)):not(:has(.app__note-list)) .breadcrumb-bar {
   --breadcrumb-bar-left-padding: 90px;
 }
 

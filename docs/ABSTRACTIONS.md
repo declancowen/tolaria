@@ -235,15 +235,13 @@ Type is determined **purely** from the `type:` frontmatter field — it is never
 ├── weekly-review.md       ← type: Procedure
 ├── john-doe.md            ← type: Person
 ├── some-topic.md          ← type: Topic
-├── AGENTS.md              ← canonical Tolaria AI guidance
-├── CLAUDE.md              ← compatibility shim pointing at AGENTS.md
-├── GEMINI.md              ← optional Gemini CLI shim pointing at AGENTS.md
+├── .laputa/agents/        ← hidden managed AI guidance
 ├── project.md             ← type: Type (definition document)
 ├── person.md              ← type: Type (definition document)
 ├── ...
 ```
 
-New notes are created at the vault root: `{vault}/{slug}.md`. Changing a note's type only requires updating the `type:` field in frontmatter — the file does not move. Moving a note into a user folder is a separate filesystem concern: the folder path changes, but the note keeps the same filename and `type:` value. Legacy `type/` and `types/` folders are still scanned like other non-hidden vault folders, so existing type documents in those folders continue to work, but new type documents created by Tolaria are written at the vault root. Legacy `config/` content is still recognized during migration and repair, but Tolaria's managed AI guidance now lives at the vault root.
+New notes are created at the vault root: `{vault}/{slug}.md`. Changing a note's type only requires updating the `type:` field in frontmatter — the file does not move. Moving a note into a user folder is a separate filesystem concern: the folder path changes, but the note keeps the same filename and `type:` value. Legacy `type/` and `types/` folders are still scanned like other non-hidden vault folders, so existing type documents in those folders continue to work, but new type documents created by Tolaria are written at the vault root. Legacy `config/` content is still recognized during migration and repair, but Tolaria's managed AI guidance now lives in the hidden `.laputa/agents/` system folder.
 
 A `flatten_vault` migration command is available to move existing notes from type-based subfolders to the vault root.
 
@@ -850,18 +848,18 @@ Installation-local layout state that should not sync through a vault stays in lo
 ### AI Guidance Files
 
 Tolaria tracks managed vault-level AI guidance separately from normal note content:
-- `AGENTS.md` is the canonical managed guidance file for Tolaria-aware coding agents
-- `CLAUDE.md` is a compatibility shim that points Claude Code back to `AGENTS.md`
-- `GEMINI.md` is an optional Gemini CLI compatibility shim that points Gemini back to `AGENTS.md`
+- `.laputa/agents/AGENTS.md` is the canonical managed guidance file for Tolaria-aware coding agents
+- `.laputa/agents/CLAUDE.md` is a compatibility shim that points Claude Code back to `.laputa/agents/AGENTS.md`
+- `.laputa/agents/GEMINI.md` is an optional Gemini CLI compatibility shim that points Gemini back to `.laputa/agents/AGENTS.md`
 - `useVaultAiGuidanceStatus` reads `get_vault_ai_guidance_status` and normalizes the backend state into four UI cases: `managed`, `missing`, `broken`, and `custom`
-- `restore_vault_ai_guidance` repairs only Tolaria-managed files and creates the optional Gemini shim on explicit request; user-authored custom `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` files are surfaced as custom and left untouched
-- Editing a usable `AGENTS.md`, including changing its frontmatter `type`, makes the file custom rather than broken; broken is reserved for missing, empty, frontmatter-only, unreadable, or exact replaceable managed templates/stubs
+- `restore_vault_ai_guidance` repairs only Tolaria-managed files in `.laputa/agents/` and creates the optional Gemini shim on explicit request; legacy root or `config/agents.md` guidance is migrated into that hidden folder when safe
+- Editing a usable managed `AGENTS.md`, including changing its frontmatter `type`, makes the file custom rather than broken; broken is reserved for missing, empty, frontmatter-only, unreadable, or exact replaceable managed templates/stubs
 - The status bar AI badge and command palette consume that abstraction to expose restore actions only when the managed guidance is missing or broken
 
 Vault guidance is intentionally short and vault-specific. General Tolaria product behavior is delivered through the bundled agent docs resource instead:
 - `scripts/build-agent-docs.mjs` compiles the public `site/` Markdown into `src-tauri/resources/agent-docs/`
 - `src-tauri/resources/agent-docs/AGENTS.md` orients agents to the generated docs bundle, while `index.md`, section bundles, `all.md`, `search-index.json`, and `pages/` provide fast local lookup
-- `get_agent_docs_path` exposes the resolved resource folder to the renderer, and `buildAgentSystemPrompt()` tells every app-managed CLI agent to read vault `AGENTS.md` first, then search the bundled docs for Tolaria behavior
+- `get_agent_docs_path` exposes the resolved resource folder to the renderer, and `buildAgentSystemPrompt()` tells every app-managed CLI agent to read the active vault guidance first, then search the bundled docs for Tolaria behavior
 
 ### Action History
 

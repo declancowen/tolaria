@@ -496,7 +496,7 @@
   "mcp.setup.runtimeRequirement": "Den här konfigurationen kräver Node.js 18+ eller Bun 1+ i PATH och ett MCP-kompatibelt skrivbordsverktyg. Tolaria kontrollerar körmiljön innan konfigurationen skrivs så att verktyget inte lämnas pekande mot ett trasigt kommando.",
   "mcp.setup.writeEntryDescription": "Om du bekräftar den här åtgärden skrivs eller uppdateras Tolarias enda {entry} MCP-post i:",
   "mcp.setup.clientPathsDescription": "Claude Code CLI läser ~/.claude.json, Gemini CLI läser ~/.gemini/settings.json, Cursor läser ~/.cursor/mcp.json, och den generiska sökvägen ~/.config/mcp/mcp.json plockas upp av andra MCP-kompatibla verktyg. Att stänga lämnar alla filer orörda om du inte ansluter eller kopplar från, återanslutning är idempotent, och frånkoppling tar bort Tolarias post igen.",
-  "mcp.setup.geminiGuidanceDescription": "Gemini CLI kräver en egen installation och inloggning. Använd Återställ Tolaria AI-vägledning när du vill ha en kompatibilitetsfil GEMINI.md i valvroten som pekar Gemini tillbaka till de delade AGENTS.md-instruktionerna utan att skriva över anpassad vägledning.",
+  "mcp.setup.geminiGuidanceDescription": "Gemini CLI kräver en egen installation och inloggning. Använd Återställ Tolaria AI-vägledning när du vill ha en dold kompatibilitetsfil GEMINI.md som pekar Gemini tillbaka till de delade AGENTS.md-instruktionerna utan att skriva över anpassad vägledning.",
   "mcp.setup.manual.title": "Manuell MCP-konfiguration",
   "mcp.setup.manual.copy": "Kopiera MCP-konfiguration",
   "mcp.setup.manual.loading": "Läser in exakt MCP-konfiguration...",

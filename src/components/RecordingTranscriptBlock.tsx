@@ -33,6 +33,7 @@ import {
 } from '../utils/transcriptionRuntime'
 
 type RecordingState = 'idle' | 'recording' | 'transcribing'
+const LIVE_TRANSCRIPTION_INTERVAL_MS = 5_000
 
 type RecordingTranscriptBlockProps = {
   block: {
@@ -89,12 +90,20 @@ export function RecordingTranscriptBlock({ block, editor }: RecordingTranscriptB
   })))
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const captureRef = useRef<RecordingCapture | null>(null)
+  const liveTranscriptionTimerRef = useRef<number | null>(null)
+  const liveTranscriptionPromiseRef = useRef<Promise<void>>(Promise.resolve())
+  const mountedRef = useRef(true)
+  const transcriptRef = useRef(block.props.transcript)
   const collapsed = block.props.collapsed === 'true'
   const modelId = resolveDefaultTranscriptionModelId(block.props.modelId)
   const languageMode = (block.props.languageMode || 'english') as TranscriptionLanguageMode
   const selectedModel = models.find(model => model.id === modelId) ?? TRANSCRIPTION_MODEL_CATALOG.find(model => model.id === modelId)
   const selectedModelInstalled = selectedModel && 'installed' in selectedModel ? selectedModel.installed : false
   const hasTranscript = block.props.transcript.trim().length > 0
+
+  useEffect(() => {
+    transcriptRef.current = block.props.transcript
+  }, [block.props.transcript])
 
   const refreshModels = useCallback(async () => {
     try {
@@ -126,16 +135,66 @@ export function RecordingTranscriptBlock({ block, editor }: RecordingTranscriptB
   }, [block.id, editor])
 
   const appendTranscript = useCallback((nextTranscript: string) => {
+    if (!mountedRef.current) return
+
     const trimmedTranscript = nextTranscript.trim()
     if (!trimmedTranscript) return
 
-    const currentTranscript = block.props.transcript.trim()
+    const currentTranscript = transcriptRef.current.trim()
+    const updatedTranscript = currentTranscript
+      ? `${currentTranscript}\n\n${trimmedTranscript}`
+      : trimmedTranscript
+    transcriptRef.current = updatedTranscript
     updateRecordingBlock(editor, block.id, {
-      transcript: currentTranscript
-        ? `${currentTranscript}\n\n${trimmedTranscript}`
-        : trimmedTranscript,
+      transcript: updatedTranscript,
     })
-  }, [block.id, block.props.transcript, editor])
+  }, [block.id, editor])
+
+  const clearLiveTranscriptionTimer = useCallback(() => {
+    if (liveTranscriptionTimerRef.current === null) return
+    window.clearInterval(liveTranscriptionTimerRef.current)
+    liveTranscriptionTimerRef.current = null
+  }, [])
+
+  const transcribeCapturedAudio = useCallback((audioBase64: string | null, phase: 'final' | 'live') => {
+    if (!audioBase64) return liveTranscriptionPromiseRef.current
+
+    const task = liveTranscriptionPromiseRef.current
+      .catch(() => undefined)
+      .then(async () => {
+        const result = await transcribeRecordedAudio(modelId, audioBase64)
+        appendTranscript(result.transcript)
+        trackEvent('editor_recording_transcript_chunk_transcribed', {
+          model_id: modelId,
+          phase,
+          transcript_length: result.transcript.length,
+        })
+      })
+
+    liveTranscriptionPromiseRef.current = task
+    return task
+  }, [appendTranscript, modelId])
+
+  const flushLiveTranscript = useCallback(async () => {
+    const capture = captureRef.current
+    if (!capture) return
+
+    try {
+      await transcribeCapturedAudio(await capture.flush(), 'live')
+    } catch (err) {
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : String(err))
+      }
+      trackEvent('editor_recording_transcript_live_failed', { model_id: modelId })
+    }
+  }, [modelId, transcribeCapturedAudio])
+
+  const startLiveTranscriptionTimer = useCallback(() => {
+    clearLiveTranscriptionTimer()
+    liveTranscriptionTimerRef.current = window.setInterval(() => {
+      void flushLiveTranscript()
+    }, LIVE_TRANSCRIPTION_INTERVAL_MS)
+  }, [clearLiveTranscriptionTimer, flushLiveTranscript])
 
   const setModel = useCallback((nextModelId: string) => {
     const resolvedModelId = resolveDefaultTranscriptionModelId(nextModelId)
@@ -156,8 +215,15 @@ export function RecordingTranscriptBlock({ block, editor }: RecordingTranscriptB
         return
       }
       setError(null)
-      captureRef.current = await startRecordingCapture()
+      const capture = await startRecordingCapture()
+      if (!mountedRef.current) {
+        await capture.stop().catch(() => undefined)
+        dispatchRecordingTranscriptSessionChange({ active: false, blockId: block.id })
+        return
+      }
+      captureRef.current = capture
       setRecordingState('recording')
+      startLiveTranscriptionTimer()
       dispatchRecordingTranscriptSessionChange({ active: true, blockId: block.id })
       trackEvent('editor_recording_transcript_started', {
         language_mode: languageMode,
@@ -167,40 +233,53 @@ export function RecordingTranscriptBlock({ block, editor }: RecordingTranscriptB
     } catch (err) {
       captureRef.current = null
       dispatchRecordingTranscriptSessionChange({ active: false, blockId: block.id })
-      setError(err instanceof Error ? err.message : String(err))
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : String(err))
+      }
       trackEvent('editor_recording_transcript_start_failed', { model_id: modelId })
     }
-  }, [block.id, hasTranscript, languageMode, modelId])
+  }, [block.id, hasTranscript, languageMode, modelId, startLiveTranscriptionTimer])
 
   const stopRecording = useCallback(async () => {
     const capture = captureRef.current
     if (!capture) return
 
+    clearLiveTranscriptionTimer()
     captureRef.current = null
     setRecordingState('transcribing')
     try {
       const audioBase64 = await capture.stop()
-      const result = await transcribeRecordedAudio(modelId, audioBase64)
-      appendTranscript(result.transcript)
+      await transcribeCapturedAudio(audioBase64, 'final')
       setError(null)
       trackEvent('editor_recording_transcript_stopped', {
         model_id: modelId,
-        transcript_length: result.transcript.length,
+        transcript_length: transcriptRef.current.length,
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : String(err))
+      }
       trackEvent('editor_recording_transcript_stop_failed', { model_id: modelId })
     } finally {
-      setRecordingState('idle')
+      if (mountedRef.current) {
+        setRecordingState('idle')
+      }
       dispatchRecordingTranscriptSessionChange({ active: false, blockId: block.id })
     }
-  }, [appendTranscript, block.id, modelId])
+  }, [block.id, clearLiveTranscriptionTimer, modelId, transcribeCapturedAudio])
 
-  useEffect(() => () => {
-    captureRef.current?.stop().catch(() => undefined)
-    captureRef.current = null
-    dispatchRecordingTranscriptSessionChange({ active: false, blockId: block.id })
-  }, [block.id])
+  useEffect(() => {
+    mountedRef.current = true
+
+    return () => {
+      mountedRef.current = false
+      clearLiveTranscriptionTimer()
+      captureRef.current?.stop().catch(() => undefined)
+      captureRef.current = null
+      liveTranscriptionPromiseRef.current.catch(() => undefined)
+      dispatchRecordingTranscriptSessionChange({ active: false, blockId: block.id })
+    }
+  }, [block.id, clearLiveTranscriptionTimer])
 
   return (
     <div className="recording-transcript-block" contentEditable={false} onMouseDown={stopBlockEvent}>

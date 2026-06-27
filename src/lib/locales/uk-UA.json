@@ -496,7 +496,7 @@
   "mcp.setup.runtimeRequirement": "Це налаштування потребує Node.js 18+ або Bun 1+ у PATH і MCP-сумісного настільного інструмента. Tolaria перевіряє середовище виконання перед записом конфігурації, тож інструмент не залишиться вказувати на нечинну команду.",
   "mcp.setup.writeEntryDescription": "Підтвердження цієї дії запише або оновить єдиний MCP-запис {entry} Tolaria у:",
   "mcp.setup.clientPathsDescription": "Claude Code CLI читає ~/.claude.json, Gemini CLI читає ~/.gemini/settings.json, Cursor читає ~/.cursor/mcp.json, а загальний шлях ~/.config/mcp/mcp.json підхоплюють інші MCP-сумісні інструменти. Закриття залишає всі файли недоторканими, доки ви не підключитесь або не від'єднаєтесь; повторне підключення є ідемпотентним, а від'єднання знову вилучає запис Tolaria.",
-  "mcp.setup.geminiGuidanceDescription": "Gemini CLI потребує власного встановлення та входу. Скористайтеся «Відновити настанови Tolaria AI», коли хочете отримати у корені сховища сумісний шим GEMINI.md, що вказує Gemini назад на спільні настанови AGENTS.md, не перезаписуючи власні настанови.",
+  "mcp.setup.geminiGuidanceDescription": "Gemini CLI потребує власного встановлення та входу. Скористайтеся «Відновити настанови Tolaria AI», коли хочете отримати прихований сумісний шим GEMINI.md, що вказує Gemini назад на спільні настанови AGENTS.md, не перезаписуючи власні настанови.",
   "mcp.setup.manual.title": "Ручна конфігурація MCP",
   "mcp.setup.manual.copy": "Копіювати конфігурацію MCP",
   "mcp.setup.manual.loading": "Завантаження точної конфігурації MCP...",

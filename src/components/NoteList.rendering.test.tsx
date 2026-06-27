@@ -1115,6 +1115,19 @@ describe('NoteList traffic-light padding', () => {
     })
   })
 
+  it('does not add left padding for native macOS traffic lights in fullscreen', () => {
+    withMacChromeClass(() => {
+      document.body.classList.add('mac-chrome-fullscreen')
+      try {
+        const { container } = renderNoteList({ sidebarCollapsed: true })
+        const header = container.querySelector('.h-\\[52px\\]') as HTMLElement
+        expect(header.style.paddingLeft).toBe('')
+      } finally {
+        document.body.classList.remove('mac-chrome-fullscreen')
+      }
+    })
+  })
+
   it('does not add native macOS traffic-light padding without the mac chrome class', () => {
     const { container } = renderNoteList({ sidebarCollapsed: true })
     const header = container.querySelector('.h-\\[52px\\]') as HTMLElement

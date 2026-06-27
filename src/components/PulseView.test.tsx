@@ -368,6 +368,7 @@ describe('PulseView', () => {
   it('offsets the collapsed-sidebar expand button past macOS traffic lights', async () => {
     mockInvokeFn.mockResolvedValue([])
 
+    document.body.classList.add('mac-chrome')
     await withUserAgent(MAC_USER_AGENT, async () => {
       render(
         <PulseView
@@ -379,6 +380,25 @@ describe('PulseView', () => {
 
       expect(await screen.findByTestId('pulse-header')).toHaveStyle({ paddingLeft: '90px' })
     })
+    document.body.classList.remove('mac-chrome')
+  })
+
+  it('does not offset the collapsed-sidebar expand button in macOS fullscreen', async () => {
+    mockInvokeFn.mockResolvedValue([])
+
+    document.body.classList.add('mac-chrome', 'mac-chrome-fullscreen')
+    await withUserAgent(MAC_USER_AGENT, async () => {
+      render(
+        <PulseView
+          vaultPath="/test/vault"
+          sidebarCollapsed
+          onExpandSidebar={vi.fn()}
+        />,
+      )
+
+      expect(await screen.findByTestId('pulse-header')).toHaveStyle({ paddingLeft: '16px' })
+    })
+    document.body.classList.remove('mac-chrome', 'mac-chrome-fullscreen')
   })
 
   it('keeps the default collapsed-sidebar header padding off macOS', async () => {
