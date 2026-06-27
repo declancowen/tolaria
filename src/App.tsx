@@ -236,6 +236,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   const aiWorkspaceWindow = false
   const [selection, setSelection] = useState<SidebarSelection>(DEFAULT_SELECTION)
   const [mainSurfaceMode, setMainSurfaceMode] = useState<MainSurfaceMode>('browser')
+  const [pendingMainSurfaceNotePath, setPendingMainSurfaceNotePath] = useState<string | null>(null)
   const [noteListDisplayMode, setNoteListDisplayMode] = useState<NoteListDisplayMode>('list')
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>('open')
   const [pendingNoteListPdfExportPath, setPendingNoteListPdfExportPath] = useState<string | null>(null)
@@ -646,13 +647,17 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   const noteActiveTabPath = notes.activeTabPath
   const noteActiveTabPathRef = notes.activeTabPathRef
   const handleSelectNoteInMainSurface = useCallback((entry: VaultEntry) => {
+    setPendingMainSurfaceNotePath(entry.path)
     setMainSurfaceMode('editor')
-    handleSelectNote(entry)
+    void handleSelectNote(entry).finally(() => {
+      setPendingMainSurfaceNotePath((pendingPath) => pendingPath === entry.path ? null : pendingPath)
+    })
   }, [handleSelectNote])
   const handleSelectMainSurfaceFromNavigation = useCallback((surfaceKey: string) => {
     const nextState = mainSurfaceStateFromKey(surfaceKey)
     if (!nextState) return
 
+    setPendingMainSurfaceNotePath(null)
     neighborhoodHistoryRef.current = []
     selectionRef.current = nextState.selection
     setSelection(nextState.selection)
@@ -770,6 +775,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     entries: visibleEntries,
     activeSurfaceKey: activeMainSurfaceKey,
     activeTabPath: notes.activeTabPath,
+    pendingActiveTabPath: mainSurfaceMode === 'editor' ? pendingMainSurfaceNotePath : null,
     onSelectNote: handleSelectNoteInMainSurface,
     onSelectSurface: handleSelectMainSurfaceFromNavigation,
   })

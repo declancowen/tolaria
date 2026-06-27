@@ -6,6 +6,7 @@ import type { VaultEntry } from '../types'
 interface UseAppNavigationParams {
   entries: VaultEntry[]
   activeTabPath: string | null
+  pendingActiveTabPath?: string | null
   activeSurfaceKey?: string | null
   onSelectNote: (entry: VaultEntry) => void
   onSelectSurface?: (surfaceKey: string) => void
@@ -35,8 +36,13 @@ function decodeNavigationTarget(raw: string): NavigationTarget | null {
   return null
 }
 
-function activeNavigationKey(activeSurfaceKey: string | null | undefined, activeTabPath: string | null): string | null {
+function activeNavigationKey(
+  activeSurfaceKey: string | null | undefined,
+  activeTabPath: string | null,
+  pendingActiveTabPath: string | null | undefined,
+): string | null {
   if (activeSurfaceKey) return encodeNavigationTarget({ kind: 'surface', key: activeSurfaceKey })
+  if (pendingActiveTabPath) return encodeNavigationTarget({ kind: 'note', path: pendingActiveTabPath })
   if (activeTabPath) return encodeNavigationTarget({ kind: 'note', path: activeTabPath })
   return null
 }
@@ -51,11 +57,12 @@ export function useAppNavigation({
   activeSurfaceKey,
   entries,
   activeTabPath,
+  pendingActiveTabPath,
   onSelectNote,
   onSelectSurface,
 }: UseAppNavigationParams) {
   const navHistory = useNavigationHistory()
-  const currentNavigationKey = activeNavigationKey(activeSurfaceKey, activeTabPath)
+  const currentNavigationKey = activeNavigationKey(activeSurfaceKey, activeTabPath, pendingActiveTabPath)
 
   // Push to navigation history whenever the active note or browser surface changes.
   const navFromHistoryRef = useRef(false)

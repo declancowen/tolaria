@@ -57,11 +57,73 @@
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-27 14:26:45 BST |
-| **Total turns** | 8 |
+| **Last reviewed** | 2026-06-27 14:34:17 BST |
+| **Total turns** | 9 |
 | **Open findings** | 0 |
 | **Resolved findings** | 13 |
 | **Accepted findings** | 0 |
+
+## Turn 9 — 2026-06-27 14:34:17 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | d60dd2fc plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Reviewed the focused navigation-history patch that prevents Back from landing on the previous hidden editor document after opening a new document from the browser/grid surface.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** low — the patch adds a pending note key to an existing navigation hook and a direct regression for the reported sequence.
+**Change archetypes:** browser/editor navigation, async note-open race, history-stack regression.
+**Intended change:** When the browser surface opens a document while a previous editor tab is still active behind it, record the newly requested document in app history rather than the stale active tab.
+**Intent vs actual:** `App.tsx` now tracks the pending main-surface note path during note open, clears it when the open request settles or when returning to a browser surface, and `useAppNavigation` prefers that pending path only while the editor surface is active.
+**Confidence:** high for the stale-tab history bug class; medium for every native gesture path until the rebuilt desktop app is manually exercised.
+**Coverage note:** Added a regression that reproduces grid/browser surface → document A → Back → document B while A is still the hidden active tab → Back, and asserts Back returns to the browser surface instead of A.
+**Finding triage:** No new findings. The live issue was the pending editor transition using stale `activeTabPath` as the history key before the requested document finished loading.
+**Static/analyzer evidence:** TypeScript, ESLint, focused navigation Vitest, whitespace, and demo-vault dirt checks passed. CodeScene MCP/CLI and Codacy CLI remained unavailable in this environment.
+**Architecture impact:** None. This keeps browser/editor history ownership in `useAppNavigation` and feeds it one extra transition-state value from `App.tsx`.
+**Deep-review evidence:** Targeted correctness/safety pass checked browser-to-editor transition ordering, Back/Forward stack truncation after Back, and hidden active-tab state. Maintainability/structure pass checked the fix stays as a small optional hook parameter rather than duplicating history logic in `App.tsx`.
+**Bug classes / invariants checked:** pending requested note wins over stale active note while entering editor mode; browser surfaces remain first-class history entries; Back after opening a new document from a returned browser surface goes to that browser surface; Forward still uses the existing stack behavior.
+**Branch totality:** Rechecked against Turn 7 two-column browser/editor contract and Turn 8 card-grid browser surface behavior.
+**Sibling closure:** Keyboard/mouse/toolbar Back share `useAppNavigation`, so the hook-level fix covers those entrypoints. Native gesture binding also calls the same handlers.
+**Remediation impact surface:** `App.tsx`, `useAppNavigation`, and its test only. No persistence, routing URL, note save, native, or vault data behavior changed.
+**Residual risk / unknowns:** Full native manual QA still needed after the desktop rebuild to confirm trackpad/mouse history gestures feel correct.
+
+### Validation
+
+- `pnpm exec vitest run src/hooks/useAppNavigation.test.ts --reporter=dot` — passed, 8 tests
+- `pnpm exec vitest run src/components/NoteList.rendering.test.tsx --reporter=dot` — passed, 60 tests
+- `pnpm exec tsc --noEmit` — passed
+- `pnpm lint` — passed
+- `git diff --check` — passed
+- `git status --short -- demo-vault demo-vault-v2` — clean
+- CodeScene file/project health — not run; no CodeScene MCP tool exposed and `cs` CLI unavailable
+- Codacy scan — not run; no Codacy MCP tool exposed and `.codacy/cli.sh` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `src/hooks/useAppNavigation.ts`, `src/hooks/useNavigationHistory.ts`, `src/App.tsx`, and the navigation hook test.
+- **Prior open findings rechecked:** none open from Turns 1-8.
+- **Prior resolved/adjacent areas revalidated:** two-column browser/editor separation, Back returning to browser surfaces, and card-grid browser surface availability.
+- **Hotspots or sibling paths revisited:** app Back/Forward handlers, sidebar toolbar controls, command/gesture entrypoints via shared hook return values.
+- **Dependency/adjacent surfaces revalidated:** TypeScript, ESLint, focused Vitest, whitespace, and demo-vault hygiene.
+- **Why this is enough:** The bug was a hook-level transition-state race, and the new test exercises the exact stale-active-tab sequence that caused Back to choose the previous document.
+
+### Challenger pass
+
+- `not needed` — Low-risk localized navigation patch. The weakest remaining assumption is native event entrypoints, which use the same `handleGoBack`/`handleGoForward` handlers and will be checked in the rebuilt app.
+
+### Resolved / Carried / New findings
+
+No open findings.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** commit the navigation fix and create a fresh Apple Silicon desktop build.
+3. **Patterns noticed:** browser/editor history needs a pending target during async note opens because the hidden editor tab remains live behind the browser surface.
+4. **Suggested approach:** keep future navigation changes tested at `useAppNavigation` so keyboard, toolbar, mouse, and gesture paths stay unified.
+5. **Architecture transition:** none.
+6. **Defer on purpose:** CodeScene and Codacy remain deferred because their local/MCP entrypoints are unavailable here.
 
 ## Turn 8 — 2026-06-27 14:26:45 BST
 

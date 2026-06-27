@@ -17,13 +17,15 @@ describe('useAppNavigation', () => {
   function renderNav(overrides: {
     entries?: VaultEntry[]
     activeTabPath?: string | null
+    pendingActiveTabPath?: string | null
     activeSurfaceKey?: string | null
   } = {}) {
     const entries = overrides.entries ?? [makeEntry('/a.md'), makeEntry('/b.md'), makeEntry('/c.md')]
     const activeTabPath = overrides.activeTabPath ?? null
+    const pendingActiveTabPath = overrides.pendingActiveTabPath ?? null
     const activeSurfaceKey = overrides.activeSurfaceKey ?? null
     return renderHook(() =>
-      useAppNavigation({ entries, activeTabPath, activeSurfaceKey, onSelectNote }),
+      useAppNavigation({ entries, activeTabPath, pendingActiveTabPath, activeSurfaceKey, onSelectNote }),
     )
   }
 
@@ -128,6 +130,34 @@ describe('useAppNavigation', () => {
       act(() => { result.current.handleGoForward() })
 
       expect(onSelectNote).toHaveBeenCalledWith(entries[0])
+    })
+
+    it('keeps Back targeting the browser surface when a new document opens from the browser while the previous editor tab is still active', () => {
+      const entries = [makeEntry('/a.md'), makeEntry('/b.md')]
+      const onSelectSurface = vi.fn()
+      const { result, rerender } = renderHook(
+        ({ activeSurfaceKey, activeTabPath, pendingActiveTabPath }) =>
+          useAppNavigation({ entries, activeSurfaceKey, activeTabPath, pendingActiveTabPath, onSelectNote, onSelectSurface }),
+        {
+          initialProps: {
+            activeSurfaceKey: 'filter:inbox' as string | null,
+            activeTabPath: null as string | null,
+            pendingActiveTabPath: null as string | null,
+          },
+        },
+      )
+
+      rerender({ activeSurfaceKey: null, activeTabPath: null, pendingActiveTabPath: '/a.md' })
+      rerender({ activeSurfaceKey: null, activeTabPath: '/a.md', pendingActiveTabPath: null })
+      act(() => { result.current.handleGoBack() })
+      rerender({ activeSurfaceKey: 'filter:inbox', activeTabPath: '/a.md', pendingActiveTabPath: null })
+      rerender({ activeSurfaceKey: null, activeTabPath: '/a.md', pendingActiveTabPath: '/b.md' })
+      rerender({ activeSurfaceKey: null, activeTabPath: '/b.md', pendingActiveTabPath: null })
+
+      act(() => { result.current.handleGoBack() })
+
+      expect(onSelectSurface).toHaveBeenLastCalledWith('filter:inbox')
+      expect(onSelectNote).not.toHaveBeenCalledWith(entries[0])
     })
   })
 })
