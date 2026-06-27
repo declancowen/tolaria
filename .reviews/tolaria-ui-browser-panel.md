@@ -29,6 +29,7 @@
 - `src-tauri/src/app_updater.rs`, release workflows, and `src-tauri/tauri.conf.json` updater endpoints — added Turn 3
 - live transcription cleanup in `src/components/RecordingTranscriptBlock.tsx`, `src/utils/transcriptionRuntime.ts`, native transcription commands, and persistent dictation toast wiring — added Turn 3
 - `src/App.tsx`, `src/components/EditorRightPanel.tsx`, `src/components/Inspector.tsx`, `src/components/note-list/NoteListViews.tsx`, and regression tests for browser AI panel / grouped card headings / properties divider — added Turn 4
+- `src/hooks/useNoteActions.ts`, `src/hooks/useNoteCreation.ts`, create-note focus tests, and smoke expectations for editor-surface note creation — added Turn 6
 
 ## Hotspots
 
@@ -47,17 +48,85 @@
 - browser-mode AI workspace visibility without an open editor — added Turn 4
 - single-divider right-panel ownership for Properties vs AI — added Turn 4
 - virtualized card-grid group heading span/alignment — added Turn 4
+- created-note browser-to-editor handoff and title-focus ownership — added Turn 6
 
 ## Review status
 
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-27 10:33:45 BST |
-| **Total turns** | 5 |
+| **Last reviewed** | 2026-06-27 11:12:44 BST |
+| **Total turns** | 6 |
 | **Open findings** | 0 |
-| **Resolved findings** | 11 |
+| **Resolved findings** | 12 |
 | **Accepted findings** | 0 |
+
+## Turn 6 — 2026-06-27 11:09:11 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | 6831bf7a plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Re-reviewed the branch after the pre-push gate exposed a create-note regression in the new browser/editor surface model, followed by a missing higher-level config type for the new callback.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** medium — shared note creation, main-surface routing, and editor focus ownership changed, but the fix is narrow and covered by targeted unit tests plus the exact failing smoke subset.
+**Change archetypes:** browser/editor navigation, note creation, editor focus lifecycle, smoke-test contract update.
+**Intended change:** Created notes should open the editor surface and focus the empty title even when the user started from the document browser or sidebar type section.
+**Intent vs actual:** The app now switches to editor mode when a created note is opened, re-requests focus after the editor has mounted, resumes editor focus ownership after toolbar/sidebar interactions that intentionally suspended it, and exposes the callback through the `useNoteActions` config boundary.
+**Confidence:** high for the create-note regression; medium for the full branch until the full pre-push gate and Apple Silicon build complete after this commit.
+**Coverage note:** Targeted App/useNoteCreation/useNoteActions tests and the focused Playwright smoke subset that failed in the push gate passed.
+**Finding triage:** One medium push-gate finding was live and resolved. The follow-up TypeScript config-boundary miss was also fixed before the push retry. No additional issues were found in the create-note sibling paths checked.
+**Static/analyzer evidence:** TypeScript, ESLint, targeted Vitest, focused Playwright smoke, whitespace check, and demo-vault dirt check passed. CodeScene MCP/CLI and Codacy CLI remained unavailable in this environment.
+**Architecture impact:** No new architecture decision. This preserves the two-column browser/editor model by making note creation an explicit transition from browser mode into editor mode.
+**Deep-review evidence:** Correctness/safety pass checked list-header, typed-section, Cmd+N, command-palette, and desktop menu-command creation paths. Maintainability/structure pass checked that the browser-to-editor transition lives at the app surface boundary while creation hooks expose a small callback instead of importing app layout state.
+**Bug classes / invariants checked:** note creation persists before selection, opening a created note hides the browser list and shows the editor, title heading receives focus after mount, toolbar/sidebar focus suspension does not block explicit create-note focus, and smoke assertions match the two-column behavior rather than the old visible-row contract.
+**Branch totality:** Rechecked this patch against Turn 1 two-column navigation, Turn 4 browser AI/sidebar surface changes, and the Turn 5 push-gate retry.
+**Sibling closure:** Checked named note creation, immediate note creation, type-section creation, command-palette creation, Cmd+N, and desktop menu command routing.
+**Remediation impact surface:** Local to `App.tsx`, `useNoteActions.ts`, `useNoteCreation.ts`, and tests. No native code, persistence schema, vault scanning, localization, or updater behavior changed in this turn.
+**Residual risk / unknowns:** CodeScene and Codacy are still not runnable locally. The full push gate and packaged Apple Silicon build remain the release confidence gate after this commit.
+
+### Validation
+
+- `pnpm exec tsc --noEmit` — passed
+- `pnpm lint` — passed
+- `pnpm exec vitest run src/hooks/useNoteCreation.test.ts src/App.test.tsx --reporter=dot` — passed, 101 tests
+- `pnpm exec vitest run src/hooks/useNoteActions.hook.test.ts src/hooks/useNoteCreation.test.ts src/App.test.tsx --reporter=dot` — passed, 143 tests
+- `pnpm exec playwright test --config playwright.smoke.config.ts tests/smoke/create-note-backing-file.spec.ts tests/smoke/fix-crash-create-note.spec.ts tests/smoke/keyboard-command-routing.spec.ts` — passed, 8 tests
+- `git diff --check` — passed
+- `git status --short -- demo-vault demo-vault-v2` — clean
+- CodeScene file/project health — not run; no CodeScene MCP tool exposed and `cs` CLI unavailable
+- Codacy scan — not run; no Codacy MCP tool exposed and `.codacy/cli.sh` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `App.tsx`, `useNoteActions.ts`, `useNoteCreation.ts`, `editorFocusOwnership.ts`, `useEditorFocus.ts`, `App.test.tsx`, `useNoteCreation.test.ts`, and the create-note smoke spec.
+- **Prior open findings rechecked:** none open from Turns 1-5.
+- **Prior resolved/adjacent areas revalidated:** two-column browser/editor separation, browser-mode AI panel, note-list create buttons, editor focus ownership, and desktop command routing.
+- **Hotspots or sibling paths revisited:** create-note paths from list header, type section, Cmd+N, command palette, and desktop menu bridge.
+- **Dependency/adjacent surfaces revalidated:** TypeScript, ESLint, targeted unit tests, focused Playwright smoke, whitespace, and demo-vault hygiene.
+- **Why this is enough:** The failed push-gate smoke paths were rerun directly, and the fix keeps creation routing in the app surface boundary without weakening persistence or focus guards.
+
+### Challenger pass
+
+- `done` — Assumed the first fix only solved the active-tab state while leaving focus blocked by the toolbar click. Reproduced that failure, then resumed editor focus ownership during explicit creation and reran the full focused smoke subset.
+
+### Resolved / Carried / New findings
+
+#### B6-1 — Resolved — Medium — `src/App.tsx`, `src/hooks/useNoteActions.ts`, `src/hooks/useNoteCreation.ts`
+
+Created notes opened a tab but could leave the app in browser mode, and focus could stay blocked by the toolbar/sidebar interaction that started the creation. The visible result was that the editor did not reliably appear/focus after list-header, typed-section, or menu-command note creation.
+
+Resolution: added an app-level created-note callback that switches the main surface to editor mode and re-requests title focus after mount, exposed that callback through the `useNoteActions` config type, and made explicit creation resume editor focus ownership before dispatching the focus event. Smoke expectations now assert the editor breadcrumb/title-focus contract instead of the old visible list-row contract.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** retry the full pre-push gate and run the requested Apple Silicon build.
+3. **Patterns noticed:** creation hooks should notify app shell state changes, not own app layout state directly.
+4. **Suggested approach:** keep create-note smoke checks focused on the user-visible editor result now that document list and editor are mutually exclusive.
+5. **Architecture transition:** none.
+6. **Defer on purpose:** CodeScene and Codacy remain deferred because their local/MCP entrypoints are unavailable here.
 
 ## Turn 5 — 2026-06-27 10:33:45 BST
 

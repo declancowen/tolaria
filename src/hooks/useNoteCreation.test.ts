@@ -348,6 +348,24 @@ describe('useNoteCreation hook', () => {
     expect(openTabWithContent.mock.calls[0][1]).toBe('---\ntitle: Test Note\ntype: Note\n---\n')
   })
 
+  it('notifies the app when a created note is opened', async () => {
+    const onOpenCreatedNote = vi.fn()
+    const { result } = renderHook(() => useNoteCreation({
+      ...makeConfig(),
+      onOpenCreatedNote,
+    }, tabDeps))
+
+    await act(async () => {
+      await result.current.handleCreateNote('Test Note', 'Note')
+    })
+
+    expect(onOpenCreatedNote).toHaveBeenCalledOnce()
+    expect(onOpenCreatedNote).toHaveBeenCalledWith(expect.objectContaining({
+      path: '/test/vault/test-note.md',
+      title: 'Test Note',
+    }))
+  })
+
   it('handleCreateNoteImmediate generates timestamp-based title', async () => {
     vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
     const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))

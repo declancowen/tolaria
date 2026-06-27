@@ -687,7 +687,10 @@ describe('App', () => {
       await waitFor(() => {
         expect(window.__laputaTest?.activeTabPath).toBe('/vault/untitled-note-1700000000.md')
       })
-      expect(screen.getAllByText('Untitled Note 1700000000').length).toBeGreaterThan(0)
+      await waitFor(() => {
+        expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
+      })
+      expect(screen.getByTestId('breadcrumb-filename-trigger')).toHaveTextContent('untitled-note-1700000000')
     } finally {
       dateNow.mockRestore()
     }

@@ -598,6 +598,17 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   const handleMissingActiveVault = useCallback(() => {
     if (!noteWindowParams && !aiWorkspaceWindow && resolvedPath) vault.markVaultUnavailable(resolvedPath)
   }, [aiWorkspaceWindow, noteWindowParams, resolvedPath, vault])
+  const handleOpenCreatedNote = useCallback((entry: VaultEntry) => {
+    setMainSurfaceMode('editor')
+    const requestFocus = () => {
+      window.dispatchEvent(new CustomEvent('laputa:focus-editor', {
+        detail: { t0: performance.now(), selectTitle: true, path: entry.path },
+      }))
+    }
+    window.requestAnimationFrame(requestFocus)
+    window.setTimeout(requestFocus, 80)
+    window.setTimeout(requestFocus, 250)
+  }, [])
 
   const notes = useNoteActions({
     addEntry: vault.addEntry,
@@ -618,6 +629,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     unsavedPaths: vault.unsavedPaths,
     markContentPending: (path, content) => appSave.contentChangeRef.current(path, content),
     onNewNotePersisted: handleCreatedVaultEntryPersisted,
+    onOpenCreatedNote: handleOpenCreatedNote,
     onMissingActiveVault: handleMissingActiveVault,
     onTypeStateChanged: async () => { await vault.reloadVault() },
     replaceEntry: vault.replaceEntry,

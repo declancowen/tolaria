@@ -32,10 +32,6 @@ async function createNoteFromListHeader(page: Page): Promise<void> {
   await page.locator('button[title="Create new note"]').click()
 }
 
-function untitledRow(page: Page, typeLabel: string) {
-  return page.getByText(new RegExp(`^Untitled ${typeLabel}(?: \\d+)?$`, 'i')).first()
-}
-
 type EmptyHeadingState = {
   contentType: string | null
   editorFocused: boolean
@@ -83,7 +79,10 @@ async function expectUntitledNoteWithoutCrash(
   const errors = capturePageErrors(page)
 
   await createNote()
-  await expect(untitledRow(page, typeLabel)).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText(
+    new RegExp(`untitled-${typeLabel}-\\d+`, 'i'),
+    { timeout: 5_000 },
+  )
   await expectReadyEmptyTitleHeading(page)
 
   expect(errors).toEqual([])

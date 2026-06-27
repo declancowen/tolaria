@@ -37,6 +37,7 @@ export interface NoteActionsConfig {
   unsavedPaths?: Set<string>
   markContentPending?: (path: string, content: string) => void
   onNewNotePersisted?: (path: string) => void
+  onOpenCreatedNote?: (entry: VaultEntry) => void
   replaceEntry?: (oldPath: string, patch: Partial<VaultEntry> & { path: string }) => void
   onPathRenamed?: (oldPath: string, newPath: string) => void
   /** Called when note loading proves the active vault path is no longer usable. */

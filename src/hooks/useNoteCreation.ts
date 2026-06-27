@@ -15,6 +15,7 @@ import {
 import { canonicalFrontmatterKey } from '../utils/systemMetadata'
 import { canonicalizeTypeName } from '../utils/vaultTypes'
 import { labelFromWorkspacePath, workspaceIdentityFromVault } from '../utils/workspaces'
+import { resumeEditorFocus } from './editorFocusOwnership'
 import {
   NOTE_FORMAT_FRONTMATTER_KEY,
   NOTE_FORMAT_SHEET,
@@ -502,6 +503,7 @@ function addEntryWithMock(entry: VaultEntry, content: string, addEntry: (e: Vaul
 
 /** Dispatch focus-editor event with perf timing marker. */
 function signalFocusEditor(opts?: { selectTitle?: boolean; path?: string }): void {
+  resumeEditorFocus()
   window.dispatchEvent(new CustomEvent('laputa:focus-editor', {
     detail: { t0: performance.now(), selectTitle: opts?.selectTitle ?? false, path: opts?.path ?? null },
   }))
@@ -658,6 +660,7 @@ interface ImmediateCreateDeps {
   vaults?: readonly VaultOption[]
   pendingSlugs: Set<string>
   openTabWithContent: (entry: VaultEntry, content: string) => void
+  onOpenCreatedNote?: (entry: VaultEntry) => void
   addEntry: (entry: VaultEntry) => void
   onNewNotePersisted?: (path: string) => void
   removePendingSave?: (path: string) => void
@@ -691,6 +694,7 @@ interface ImmediateCreateQueueConfig {
   vaults?: readonly VaultOption[]
   addEntry: (entry: VaultEntry) => void
   openTabWithContent: (entry: VaultEntry, content: string) => void
+  onOpenCreatedNote?: (entry: VaultEntry) => void
   onNewNotePersisted?: (path: string) => void
   removePendingSave?: (path: string) => void
   setToastMessage: (msg: string | null) => void
@@ -779,6 +783,7 @@ async function createNoteImmediate(deps: ImmediateCreateDeps, request: Immediate
 
   cacheNoteContent(resolved.entry.path, resolved.content, resolved.entry)
   deps.openTabWithContent(resolved.entry, resolved.content)
+  deps.onOpenCreatedNote?.(resolved.entry)
   addEntryWithMock(resolved.entry, resolved.content, deps.addEntry)
   signalFocusEditor({ path: resolved.entry.path, selectTitle: true })
   return true
@@ -803,6 +808,7 @@ function useLatestImmediateCreateDeps(
     vaultPath,
     vaults,
     openTabWithContent,
+    onOpenCreatedNote,
     addEntry,
     addPendingSave,
     onNewNotePersisted,
@@ -818,6 +824,7 @@ function useLatestImmediateCreateDeps(
       vaults,
       pendingSlugs: pendingSlugsRef.current,
       openTabWithContent,
+      onOpenCreatedNote,
       addEntry,
       addPendingSave,
       onNewNotePersisted,
@@ -830,6 +837,7 @@ function useLatestImmediateCreateDeps(
     vaultPath,
     vaults,
     openTabWithContent,
+    onOpenCreatedNote,
     addEntry,
     addPendingSave,
     onNewNotePersisted,
@@ -922,6 +930,7 @@ export interface NoteCreationConfig {
   unsavedPaths?: Set<string>
   markContentPending?: (path: string, content: string) => void
   onNewNotePersisted?: (path: string) => void
+  onOpenCreatedNote?: (entry: VaultEntry) => void
   onTypeStateChanged?: () => void | Promise<void>
 }
 
@@ -941,6 +950,7 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
     vaultPath,
     vaults,
     onNewNotePersisted,
+    onOpenCreatedNote,
     onTypeStateChanged,
   } = config
   const { openTabWithContent } = tabDeps
@@ -949,7 +959,10 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
     resolved: ResolvedEntry,
     options?: PersistResolvedOptions,
   ): Promise<void> => {
-    if (options?.openTab !== false) openTabWithContent(resolved.entry, resolved.content)
+    if (options?.openTab !== false) {
+      openTabWithContent(resolved.entry, resolved.content)
+      onOpenCreatedNote?.(resolved.entry)
+    }
     addEntryWithMock(resolved.entry, resolved.content, addEntry)
     try {
       await persistOptimistic(
@@ -963,7 +976,16 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
       removeEntry(resolved.entry.path)
       throw error
     }
-  }, [openTabWithContent, addEntry, addPendingSave, removePendingSave, onNewNotePersisted, onTypeStateChanged, removeEntry])
+  }, [
+    openTabWithContent,
+    onOpenCreatedNote,
+    addEntry,
+    addPendingSave,
+    removePendingSave,
+    onNewNotePersisted,
+    onTypeStateChanged,
+    removeEntry,
+  ])
 
   const handleCreateNote = useCallback((title: string, type: string, creationPath: 'plus_button' | 'quick_open' = 'plus_button'): Promise<boolean> =>
     createNamedNote({ entries, vaultPath, defaultWorkspacePath, vaults, setToastMessage, persistResolvedEntry, title, type, creationPath }),
@@ -989,6 +1011,7 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
     addEntry,
     addPendingSave,
     openTabWithContent,
+    onOpenCreatedNote,
     onNewNotePersisted,
     removePendingSave,
     setToastMessage,
