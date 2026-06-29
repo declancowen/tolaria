@@ -55,17 +55,76 @@
 - smoke-test note switching under the two-column browser/editor contract — added Turn 7
 - browser-surface Back behavior when list/grid opens replace the active editor tab — added Turn 10
 - browser folder/document grouping, list-preview parity, row/card spacing/property pills, sort/group trigger icon sizing, and empty sidebar-section height — added Turn 11
+- browser card-grid outer inset parity with list/rows — added Turn 12
 
 ## Review status
 
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-29 15:36:19 BST |
-| **Total turns** | 11 |
+| **Last reviewed** | 2026-06-29 16:00:26 BST |
+| **Total turns** | 12 |
 | **Open findings** | 0 |
 | **Resolved findings** | 13 |
 | **Accepted findings** | 0 |
+
+## Turn 12 — 2026-06-29 16:00:26 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | 9832559a plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Reviewed the focused browser card-grid spacing correction that makes cards use the same outer horizontal inset and top surface rhythm as list/rows.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** low — two presentation classes changed in the card branch plus a focused rendering assertion.
+**Change archetypes:** UI presentation, virtualized card grid spacing.
+**Intended change:** The card/grid browser view should not sit closer to the window edge or lower than list/rows; it should share the same outer section inset while preserving card internals and document previews.
+**Intent vs actual:** `BrowserView` removed the extra card-surface `pt-2` wrapper padding and changed the card grid list inset from `px-2` to `px-4`, matching the existing list/row section inset. The regression test now asserts no extra card-surface top padding and verifies the grid uses `px-4` rather than `px-2`.
+**Confidence:** high for the rendered class behavior covered by the focused test; medium for native visual feel until the rebuilt Mac app is inspected.
+**Coverage note:** Added focused assertions in `NoteList.rendering.test.tsx` for card-grid top padding and horizontal inset parity.
+**Finding triage:** No findings. The main risk was accidentally changing list/row preview structure again; the diff is limited to the card branch and its test.
+**Static/analyzer evidence:** Focused Vitest and whitespace check passed. CodeScene MCP/CLI and Codacy MCP/CLI were unavailable in this environment.
+**Architecture impact:** None. This is a local layout class change inside the existing browser card renderer.
+**Deep-review evidence:** Not needed for this low-risk spacing-only delta. Correctness pass checked the diff only touches the card-grid surface, not list/rows or note data rendering.
+**Bug classes / invariants checked:** list/rows remain the reference spacing; card grid keeps folder/document card rendering unchanged; card section headings still span the virtualized grid; no navigation, persistence, localization, or native command behavior changed.
+**Branch totality:** Rechecked Turn 11 browser presentation assumptions. This patch corrects only the card-grid outer inset and does not reopen list-mode preview parity or row-mode compact-row behavior.
+**Sibling closure:** Browser card surface and card grid list classes were checked; adjacent row/list class constants were intentionally left unchanged.
+**Remediation impact surface:** `src/components/note-list/NoteListViews.tsx` and `src/components/NoteList.rendering.test.tsx`.
+**Residual risk / unknowns:** Native screenshot/manual visual QA remains after the clean build.
+
+### Validation
+
+- `pnpm exec vitest run src/components/NoteList.rendering.test.tsx` — passed, 65 tests
+- `git diff --check` — passed
+- CodeScene file/project health — not run; no CodeScene MCP tool exposed and `cs` CLI unavailable
+- Codacy scan — not run; no Codacy MCP tool exposed and `.codacy/cli.sh`/`codacy` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `NoteListViews`, focused rendering test, and Turn 11 review ledger.
+- **Prior open findings rechecked:** none open from Turns 1-11.
+- **Prior resolved/adjacent areas revalidated:** Turn 11 list-preview parity, row-mode compact rows, and card heading span remain intact because their rendering branches were not changed.
+- **Hotspots or sibling paths revisited:** card-grid surface wrapper and card grid list inset.
+- **Dependency/adjacent surfaces revalidated:** focused Vitest and whitespace check.
+- **Why this is enough:** The patch is a two-class layout correction with direct test coverage and no data or interaction behavior changes.
+
+### Challenger pass
+
+- `not needed` — Low-risk presentation-only patch.
+
+### Resolved / Carried / New findings
+
+No open findings.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** run the broader checks, build the Apple Silicon app, commit, and push.
+3. **Patterns noticed:** keep list/rows as the spacing reference when adjusting browser card/grid outer surfaces.
+4. **Suggested approach:** if the visual pass still feels off, adjust only card-surface/grid wrapper spacing and leave list/row document renderers untouched.
+5. **Architecture transition:** none.
+6. **Defer on purpose:** CodeScene and Codacy remain deferred because their local/MCP entrypoints are unavailable here.
 
 ## Turn 11 — 2026-06-29 14:57:58 BST
 

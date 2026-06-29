@@ -594,7 +594,12 @@ describe('NoteList rendering', () => {
     )
 
     await waitFor(() => {
-      expect(container.querySelector('[data-browser-card-grid-surface="true"]')).toHaveClass('pt-2')
+      const cardSurface = container.querySelector('[data-browser-card-grid-surface="true"]')
+      expect(cardSurface).toHaveClass('h-full')
+      expect(cardSurface).not.toHaveClass('pt-2')
+      const cardGrid = cardSurface?.querySelector('.grid')
+      expect(cardGrid).toHaveClass('px-4')
+      expect(cardGrid).not.toHaveClass('px-2')
       const groupHeading = container.querySelector('[data-browser-view-grid-heading="true"]')
       expect(groupHeading?.closest('.browser-view-grid-item')).toHaveClass('browser-view-grid-item--group')
       const cardButton = screen.getByText('Project Card').closest('button')

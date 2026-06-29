@@ -569,14 +569,14 @@ export function BrowserView({
 
   if (displayMode === 'cards') {
     return (
-      <div className="h-full pt-2" data-browser-card-grid-surface="true">
+      <div className="h-full" data-browser-card-grid-surface="true">
         <VirtuosoGrid
           style={{ height: '100%' }}
           data={browserItems}
           context={{ items: browserItems }}
           components={{ Item: BrowserGridItem }}
           overscan={200}
-          listClassName="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] content-start gap-2 px-2 pb-2"
+          listClassName="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] content-start gap-2 px-4 pb-2"
           itemClassName="browser-view-grid-item min-w-0 overflow-hidden"
           computeItemKey={(_index, item) => item.key}
           itemContent={(_index, item) => {
