@@ -56,17 +56,82 @@
 - browser-surface Back behavior when list/grid opens replace the active editor tab — added Turn 10
 - browser folder/document grouping, list-preview parity, row/card spacing/property pills, sort/group trigger icon sizing, and empty sidebar-section height — added Turn 11
 - browser card-grid outer inset parity with list/rows — added Turn 12
+- browser folder/document context-menu parity — added Turn 13
 
 ## Review status
 
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-29 16:00:26 BST |
-| **Total turns** | 12 |
+| **Last reviewed** | 2026-06-29 16:23:38 BST |
+| **Total turns** | 13 |
 | **Open findings** | 0 |
 | **Resolved findings** | 13 |
 | **Accepted findings** | 0 |
+
+## Turn 13 — 2026-06-29 16:23:38 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | 53c1adba plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Reviewed the browser context-menu patch that restores note actions on card/row documents and adds the existing folder menu to browser folders in list, rows, and cards.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** medium — the patch touches shared note-list model/layout wiring, custom browser renderers, app-level folder action props, and context-menu regression tests.
+**Change archetypes:** UI interaction parity, shared context menu reuse, virtualized browser rows/cards.
+**Intended change:** Browser document cards/rows should open the same note context menu as list rows, and browser folders in list/rows/cards should open the same folder action menu used by the left sidebar.
+**Intent vs actual:** `BrowserEntryItem` now receives the existing note context-menu handler and attaches it to card/row document buttons. `BrowserFolderItem` now attaches the existing folder context-menu hook and renders the existing `FolderContextMenu` for list, row, and card browser folders. `NoteList` receives the same folder action props as the sidebar from `App.tsx`.
+**Confidence:** high for the React behavior covered by focused tests and TypeScript; medium for exact native pointer feel until manual WKWebView interaction is performed.
+**Coverage note:** Added parameterized tests for right-clicking documents in card and row browser modes, plus right-clicking folders in list, rows, and cards with reveal, copy path, rename, and delete actions.
+**Finding triage:** No findings. The original regression came from custom browser card/row renderers bypassing `NoteItem`, which already owned document context menus. Folder browser items had selection but no menu handler.
+**Static/analyzer evidence:** Focused Vitest, TypeScript, ESLint, localization validation, whitespace check, demo-vault hygiene, and Apple Silicon Tauri build passed. CodeScene MCP/CLI and Codacy MCP/CLI were unavailable in this environment.
+**Architecture impact:** Low. The patch reuses existing menu hooks/components and app actions rather than creating a parallel menu surface.
+**Deep-review evidence:** Correctness pass checked document rows/cards, folder list/rows/cards, menu dismissal/reopen via existing hooks, and unchanged list-mode document `NoteItem` behavior. Maintainability pass checked that the menu action definitions remain centralized in `NoteListContextMenu` and `FolderContextMenu`.
+**Bug classes / invariants checked:** custom browser document renderers must still expose note actions; folder browser renderers must expose sidebar folder actions; list-mode documents remain on the `renderItem`/`NoteItem` path; folder menu actions call the same app folder handlers; no new UI copy or localization keys were added.
+**Branch totality:** Rechecked Turns 11-12 browser presentation assumptions. This patch adds interaction handlers without changing grouping, row/card spacing, or document preview structure.
+**Sibling closure:** Document cards and rows were tested; folder list, rows, and cards were tested; sidebar menu implementation was reused rather than duplicated.
+**Remediation impact surface:** `App.tsx`, `NoteListLayout`, `NoteListViews`, `useNoteListModel`, and `NoteList.contextMenu.test.tsx`.
+**Residual risk / unknowns:** Native manual right-click QA was not run; the built app is ready for that check.
+
+### Validation
+
+- `pnpm exec vitest run src/components/NoteList.contextMenu.test.tsx src/components/NoteList.rendering.test.tsx` — passed, 76 tests
+- `npx tsc --noEmit` — passed
+- `pnpm lint` — passed
+- `pnpm l10n:validate` — passed
+- `git diff --check` — passed
+- `pnpm tauri build --target aarch64-apple-darwin --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'` — passed
+- `file src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Tolaria.app/Contents/MacOS/tolaria` — confirmed `Mach-O 64-bit executable arm64`
+- `git status --short -- demo-vault demo-vault-v2` — clean
+- CodeScene file/project health — not run; no CodeScene MCP tool exposed and `cs` CLI unavailable
+- Codacy scan — not run; no Codacy MCP tool exposed and `.codacy/cli.sh`/`codacy` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `NoteListContextMenu`, `FolderContextMenu`, `useFolderContextMenu`, `NoteListViews`, `NoteListLayout`, `useNoteListModel`, app note-list wiring, and existing context-menu tests.
+- **Prior open findings rechecked:** none open from Turns 1-12.
+- **Prior resolved/adjacent areas revalidated:** Turn 11 list-preview parity is unchanged because list-mode documents still render through `renderItem`; Turn 12 card-grid spacing is unchanged except for adding `onContextMenu`.
+- **Hotspots or sibling paths revisited:** document context actions, folder context actions, list/rows/cards browser modes, app-level folder action props.
+- **Dependency/adjacent surfaces revalidated:** focused Vitest, TypeScript, ESLint, localization validation, whitespace, demo-vault hygiene, and arm64 Tauri packaging.
+- **Why this is enough:** The changed behavior is interaction wiring to existing menu implementations, and each affected browser mode now has direct regression coverage.
+
+### Challenger pass
+
+- `not needed` — Medium-risk UI interaction patch with focused branch coverage. The weakest remaining assumption is native right-click feel, recorded as residual QA risk.
+
+### Resolved / Carried / New findings
+
+No open findings.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** commit and push the reviewed context-menu patch.
+3. **Patterns noticed:** custom browser renderers need explicit forwarding for shared interactions already handled by `NoteItem`.
+4. **Suggested approach:** keep future browser-mode affordances wired through shared menu/action hooks rather than duplicating action lists.
+5. **Architecture transition:** none.
+6. **Defer on purpose:** CodeScene and Codacy remain deferred because their local/MCP entrypoints are unavailable here.
 
 ## Turn 12 — 2026-06-29 16:00:26 BST
 

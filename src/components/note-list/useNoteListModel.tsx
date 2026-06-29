@@ -36,6 +36,7 @@ import { useChangesContextMenu } from './NoteListChangesMenu'
 import { useNoteListContextMenu } from './NoteListContextMenu'
 import { addNoteListSearchToggleListener, dispatchNoteListSearchAvailability } from '../../utils/noteListSearchEvents'
 import { useDateDisplayFormat } from '../../hooks/useAppPreferences'
+import type { FolderFileActions } from '../../hooks/useFileActions'
 import type { NoteListDisplayMode } from './noteListDisplayMode'
 
 type EntitySelection = Extract<SidebarSelection, { kind: 'entity' }>
@@ -481,6 +482,9 @@ function useNoteListInteractionState({
     handleBulkDeletePermanently,
     handleBulkUnarchive,
   } = useBulkActions(multiSelect, onBulkArchive, onBulkDeletePermanently, isArchivedView)
+  const entryContextMenu = isChangesView && onDiscardFile
+    ? changesContextMenu.handleNoteContextMenu
+    : noteListContextMenu.handleNoteContextMenu
 
   return {
     changesContextMenu,
@@ -490,6 +494,7 @@ function useNoteListInteractionState({
     handleBulkDeletePermanently,
     handleBulkUnarchive,
     handleClickNote,
+    entryContextMenu,
     handleCreateNote,
     handleListKeyDown,
     multiSelect,
@@ -599,6 +604,9 @@ export interface NoteListProps {
   getNoteStatus?: (path: string) => NoteStatus
   sidebarCollapsed?: boolean
   onSelectFolder?: (selection: FolderSelection) => void
+  onDeleteFolder?: (folderPath: string) => void
+  folderFileActions?: FolderFileActions
+  onStartRenameFolder?: (folderPath: string) => void
   onSelectNote: (entry: VaultEntry) => void
   onReplaceActiveTab: (entry: VaultEntry) => void
   onEnterNeighborhood?: (entry: VaultEntry) => void
@@ -650,6 +658,9 @@ function buildNoteListLayoutModel(params: {
   onDisplayModeChange: (mode: NoteListDisplayMode) => void
   onGroupByChange: (option: GroupByOption) => void
   onSelectFolder?: (selection: FolderSelection) => void
+  onDeleteFolder?: (folderPath: string) => void
+  folderFileActions?: FolderFileActions
+  onStartRenameFolder?: (folderPath: string) => void
   onOpenType: (entry: VaultEntry) => void
   locale: AppLocale
   content: ReturnType<typeof useNoteListContent> & {
@@ -705,6 +716,7 @@ function buildNoteListLayoutModel(params: {
     renderItem: params.interaction.renderItem,
     typeEntryMap: params.content.typeEntryMap,
     handleClickNote: params.interaction.handleClickNote,
+    entryContextMenu: params.interaction.entryContextMenu,
     isArchivedView: params.content.isArchivedView,
     isChangesView: params.selection.kind === 'filter' && params.selection.filter === 'changes',
     gitRepositories: params.gitRepositories ?? [],
@@ -721,6 +733,9 @@ function buildNoteListLayoutModel(params: {
     onDisplayModeChange: params.onDisplayModeChange,
     onGroupByChange: params.onGroupByChange,
     onSelectFolder: params.onSelectFolder,
+    onDeleteFolder: params.onDeleteFolder,
+    folderFileActions: params.folderFileActions,
+    onStartRenameFolder: params.onStartRenameFolder,
     multiSelect: params.interaction.multiSelect,
     handleBulkArchive: params.interaction.handleBulkArchive,
     handleBulkDeletePermanently: params.interaction.handleBulkDeletePermanently,
@@ -754,6 +769,9 @@ export function useNoteListModel({
   getNoteStatus,
   sidebarCollapsed,
   onSelectFolder,
+  onDeleteFolder,
+  folderFileActions,
+  onStartRenameFolder,
   onReplaceActiveTab,
   onEnterNeighborhood,
   onCreateNote,
@@ -913,6 +931,9 @@ export function useNoteListModel({
     onDisplayModeChange: handleDisplayModeChange,
     onGroupByChange: setGroupBy,
     onSelectFolder,
+    onDeleteFolder,
+    folderFileActions,
+    onStartRenameFolder,
     locale,
     content: {
       ...content,

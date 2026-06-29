@@ -35,6 +35,60 @@ function clickBuildLaputaAction(label: string) {
 }
 
 describe('NoteList context menu', () => {
+  it.each(['cards', 'rows'] as const)('opens note actions from a right-clicked browser %s document', async (displayMode) => {
+    const onBulkDeletePermanently = vi.fn()
+
+    renderNoteList({
+      displayMode,
+      entries: [mockEntries[0]],
+      onBulkDeletePermanently,
+    })
+
+    fireEvent.contextMenu(await screen.findByText('Build Laputa App'))
+
+    expect(screen.getByTestId('note-list-context-menu')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Delete this note'))
+    expect(onBulkDeletePermanently).toHaveBeenCalledWith([mockEntries[0].path])
+  })
+
+  it.each(['list', 'rows', 'cards'] as const)('opens folder actions from a right-clicked browser %s folder', async (displayMode) => {
+    const onDeleteFolder = vi.fn()
+    const onStartRenameFolder = vi.fn()
+    const folderFileActions = {
+      copyFolderPath: vi.fn(),
+      revealFolder: vi.fn(),
+    }
+
+    renderNoteList({
+      displayMode,
+      entries: [],
+      folders: [{ name: 'Agents', path: 'Agents', children: [] }],
+      folderFileActions,
+      onDeleteFolder,
+      onStartRenameFolder,
+      selection: { kind: 'folder', path: '' },
+    })
+
+    const folderLabel = await screen.findByText('Agents')
+
+    fireEvent.contextMenu(folderLabel)
+    expect(screen.getByTestId('folder-context-menu')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Reveal in Finder'))
+    expect(folderFileActions.revealFolder).toHaveBeenCalledWith('Agents')
+
+    fireEvent.contextMenu(folderLabel)
+    fireEvent.click(screen.getByText('Copy folder path'))
+    expect(folderFileActions.copyFolderPath).toHaveBeenCalledWith('Agents')
+
+    fireEvent.contextMenu(folderLabel)
+    fireEvent.click(screen.getByText('Rename folder...'))
+    expect(onStartRenameFolder).toHaveBeenCalledWith('Agents')
+
+    fireEvent.contextMenu(folderLabel)
+    fireEvent.click(screen.getByText('Delete folder...'))
+    expect(onDeleteFolder).toHaveBeenCalledWith('Agents')
+  })
+
   it('opens note actions from a right-clicked note item', () => {
     const onOpenInNewWindow = vi.fn()
     const onEnterNeighborhood = vi.fn()

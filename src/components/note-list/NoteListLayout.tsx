@@ -100,6 +100,7 @@ function NoteListContent({
   folderChildren,
   typeEntryMap,
   handleClickNote,
+  entryContextMenu,
   isArchivedView,
   isChangesView,
   isInboxView,
@@ -109,6 +110,9 @@ function NoteListContent({
   locale,
   loading,
   onSelectFolder,
+  onDeleteFolder,
+  folderFileActions,
+  onStartRenameFolder,
 }: Pick<
   NoteListLayoutProps,
   | 'allEntries'
@@ -128,6 +132,7 @@ function NoteListContent({
   | 'folderChildren'
   | 'typeEntryMap'
   | 'handleClickNote'
+  | 'entryContextMenu'
   | 'isArchivedView'
   | 'isChangesView'
   | 'isInboxView'
@@ -137,6 +142,9 @@ function NoteListContent({
   | 'locale'
   | 'loading'
   | 'onSelectFolder'
+  | 'onDeleteFolder'
+  | 'folderFileActions'
+  | 'onStartRenameFolder'
 >) {
   const shouldUseBrowserView = displayMode !== 'list' || groupBy !== 'none' || folderChildren.length > 0
 
@@ -163,6 +171,7 @@ function NoteListContent({
           displayMode={displayMode}
           displayPropsOverride={displayPropsOverride}
           documentGroups={documentGroups}
+          folderFileActions={folderFileActions}
           folderChildren={folderChildren}
           groupBy={groupBy}
           typeEntryMap={typeEntryMap}
@@ -173,8 +182,11 @@ function NoteListContent({
           searched={searched}
           query={query}
           renderItem={renderItem}
+          onEntryContextMenu={entryContextMenu}
           onOpenEntry={handleClickNote}
           onSelectFolder={onSelectFolder}
+          onDeleteFolder={onDeleteFolder}
+          onStartRenameFolder={onStartRenameFolder}
           locale={locale}
         />
       ) : (
@@ -218,6 +230,7 @@ function NoteListBody({
   folderChildren,
   typeEntryMap,
   handleClickNote,
+  entryContextMenu,
   isArchivedView,
   isChangesView,
   isInboxView,
@@ -229,6 +242,9 @@ function NoteListBody({
   filterCounts,
   onNoteListFilterChange,
   onSelectFolder,
+  onDeleteFolder,
+  folderFileActions,
+  onStartRenameFolder,
   loading,
 }: Pick<
   NoteListLayoutProps,
@@ -255,6 +271,7 @@ function NoteListBody({
   | 'folderChildren'
   | 'typeEntryMap'
   | 'handleClickNote'
+  | 'entryContextMenu'
   | 'isArchivedView'
   | 'isChangesView'
   | 'isInboxView'
@@ -266,6 +283,9 @@ function NoteListBody({
   | 'filterCounts'
   | 'onNoteListFilterChange'
   | 'onSelectFolder'
+  | 'onDeleteFolder'
+  | 'folderFileActions'
+  | 'onStartRenameFolder'
   | 'loading'
 >) {
   return (
@@ -300,6 +320,7 @@ function NoteListBody({
         folderChildren={folderChildren}
         typeEntryMap={typeEntryMap}
         handleClickNote={handleClickNote}
+        entryContextMenu={entryContextMenu}
         isArchivedView={isArchivedView}
         isChangesView={isChangesView}
         isInboxView={isInboxView}
@@ -309,6 +330,9 @@ function NoteListBody({
         locale={locale}
         loading={loading}
         onSelectFolder={onSelectFolder}
+        onDeleteFolder={onDeleteFolder}
+        folderFileActions={folderFileActions}
+        onStartRenameFolder={onStartRenameFolder}
       />
       {showFilterPills && (
         <FilterPills

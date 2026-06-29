@@ -15,6 +15,9 @@ import type { NoteListDisplayMode } from './noteListDisplayMode'
 import { PinnedCard } from './PinnedCard'
 import { RelationshipGroupSection } from './RelationshipGroupSection'
 import { EmptyMessage } from './TrashWarningBanner'
+import type { FolderFileActions } from '../../hooks/useFileActions'
+import { FolderContextMenu } from '../folder-tree/FolderContextMenu'
+import { useFolderContextMenu } from '../folder-tree/useFolderContextMenu'
 
 type FolderSelection = Extract<SidebarSelection, { kind: 'folder' }>
 type BrowserSection = 'folders' | 'documents'
@@ -388,13 +391,16 @@ function BrowserSectionHeading({
 function BrowserFolderItem({
   displayMode,
   folder,
+  onContextMenu,
   onSelectFolder,
 }: {
   displayMode: NoteListDisplayMode
   folder: FolderNode
+  onContextMenu?: (folder: FolderNode, event: React.MouseEvent<HTMLElement>) => void
   onSelectFolder?: (selection: FolderSelection) => void
 }) {
   const openFolder = () => onSelectFolder?.(folderSelection(folder))
+  const openFolderMenu = (event: React.MouseEvent<HTMLElement>) => onContextMenu?.(folder, event)
 
   if (displayMode === 'cards') {
     return (
@@ -403,6 +409,7 @@ function BrowserFolderItem({
         variant="ghost"
         className="h-full min-h-[72px] w-full min-w-0 items-center justify-start overflow-hidden whitespace-normal rounded-md border border-border bg-background p-3 text-left shadow-none hover:bg-muted"
         onClick={openFolder}
+        onContextMenu={openFolderMenu}
       >
         <div className="flex h-full w-full min-w-0 flex-col justify-center">
           <Folder size={18} weight="fill" className="text-foreground" />
@@ -415,7 +422,7 @@ function BrowserFolderItem({
   const rowClassName = 'grid h-12 w-full min-w-0 grid-cols-[minmax(0,1fr)] items-center gap-3 rounded-none border-0 bg-transparent px-4 py-0 text-left shadow-none hover:bg-muted'
 
   return (
-    <Button type="button" variant="ghost" className={rowClassName} onClick={openFolder}>
+    <Button type="button" variant="ghost" className={rowClassName} onClick={openFolder} onContextMenu={openFolderMenu}>
       <div className={BROWSER_ROW_TITLE_CLASSNAME}>
         <Folder size={16} weight="fill" className="shrink-0 text-foreground" />
         <span className="truncate text-[13px] font-medium text-foreground">{folder.name}</span>
@@ -439,6 +446,7 @@ function BrowserEntryItem({
   displayMode,
   displayPropsOverride,
   entry,
+  onContextMenu,
   onOpenEntry,
   typeEntryMap,
 }: {
@@ -447,11 +455,13 @@ function BrowserEntryItem({
   displayMode: Exclude<NoteListDisplayMode, 'list'>
   displayPropsOverride?: string[] | null
   entry: VaultEntry
+  onContextMenu?: (entry: VaultEntry, event: React.MouseEvent) => void
   onOpenEntry: (entry: VaultEntry, event: React.MouseEvent) => void
   typeEntryMap: Record<string, VaultEntry>
 }) {
   const subtitle = entry.snippet || entry.filename
   const created = entry.createdAt ? relativeDate(entry.createdAt) : ''
+  const openContextMenu = (event: React.MouseEvent) => onContextMenu?.(entry, event)
   if (displayMode === 'cards') {
     return (
       <Button
@@ -459,6 +469,7 @@ function BrowserEntryItem({
         variant="ghost"
         className="h-auto min-h-0 w-full min-w-0 items-start justify-start overflow-hidden whitespace-normal rounded-md border border-border bg-background p-3 text-left shadow-none hover:bg-muted"
         onClick={(event) => onOpenEntry(entry, event)}
+        onContextMenu={openContextMenu}
       >
         <div className="flex h-full w-full min-w-0 flex-col">
           <FileText size={18} className="text-muted-foreground" />
@@ -490,6 +501,7 @@ function BrowserEntryItem({
       variant="ghost"
       className={BROWSER_ROW_GRID_CLASSNAME}
       onClick={(event) => onOpenEntry(entry, event)}
+      onContextMenu={openContextMenu}
     >
       <BrowserDocumentTitle entry={entry} />
       <span className="truncate text-[12px] font-normal text-muted-foreground">{subtitle}</span>
@@ -515,6 +527,7 @@ export function BrowserView({
   displayMode,
   displayPropsOverride,
   documentGroups,
+  folderFileActions,
   folderChildren,
   groupBy,
   allEntries,
@@ -523,8 +536,11 @@ export function BrowserView({
   isChangesView,
   isInboxView,
   locale = 'en',
+  onDeleteFolder,
+  onEntryContextMenu,
   onOpenEntry,
   onSelectFolder,
+  onStartRenameFolder,
   query,
   renderItem,
   searched,
@@ -534,6 +550,7 @@ export function BrowserView({
   displayMode: NoteListDisplayMode
   displayPropsOverride?: string[] | null
   documentGroups: NoteListDocumentGroup[]
+  folderFileActions?: FolderFileActions
   folderChildren: FolderNode[]
   groupBy: GroupByOption
   allEntries?: VaultEntry[]
@@ -542,12 +559,32 @@ export function BrowserView({
   isChangesView?: boolean
   isInboxView?: boolean
   locale?: AppLocale
+  onDeleteFolder?: (folderPath: string) => void
+  onEntryContextMenu?: (entry: VaultEntry, event: React.MouseEvent) => void
   onOpenEntry: (entry: VaultEntry, event: React.MouseEvent) => void
   onSelectFolder?: (selection: FolderSelection) => void
+  onStartRenameFolder?: (folderPath: string) => void
   query: string
   renderItem: (entry: VaultEntry) => React.ReactNode
   searched: VaultEntry[]
 }) {
+  const folderContextMenu = useFolderContextMenu({
+    onDeleteFolder,
+    folderFileActions,
+    onStartRenameFolder,
+  })
+  const folderContextMenuNode = (
+    <FolderContextMenu
+      menu={folderContextMenu.contextMenu}
+      menuRef={folderContextMenu.menuRef}
+      onDelete={folderContextMenu.handleDeleteFromMenu}
+      onReveal={folderContextMenu.handleRevealFromMenu}
+      onCopyPath={folderContextMenu.handleCopyPathFromMenu}
+      onCreateNote={folderContextMenu.handleCreateNoteFromMenu}
+      onRename={folderContextMenu.handleRenameFromMenu}
+      locale={locale}
+    />
+  )
   const emptyText = resolveEmptyText({
     isChangesView: !!isChangesView,
     changesError: changesError ?? null,
@@ -569,92 +606,103 @@ export function BrowserView({
 
   if (displayMode === 'cards') {
     return (
-      <div className="h-full" data-browser-card-grid-surface="true">
-        <VirtuosoGrid
-          style={{ height: '100%' }}
-          data={browserItems}
-          context={{ items: browserItems }}
-          components={{ Item: BrowserGridItem }}
-          overscan={200}
-          listClassName="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] content-start gap-2 px-4 pb-2"
-          itemClassName="browser-view-grid-item min-w-0 overflow-hidden"
-          computeItemKey={(_index, item) => item.key}
-          itemContent={(_index, item) => {
-            if (item.kind === 'folder') {
-              return <BrowserFolderItem folder={item.folder} displayMode={displayMode} onSelectFolder={onSelectFolder} />
-            }
-            if (item.kind === 'section') {
+      <>
+        <div className="h-full" data-browser-card-grid-surface="true">
+          <VirtuosoGrid
+            style={{ height: '100%' }}
+            data={browserItems}
+            context={{ items: browserItems }}
+            components={{ Item: BrowserGridItem }}
+            overscan={200}
+            listClassName="grid grid-cols-[repeat(auto-fill,minmax(320px,1fr))] content-start gap-2 px-4 pb-2"
+            itemClassName="browser-view-grid-item min-w-0 overflow-hidden"
+            computeItemKey={(_index, item) => item.key}
+            itemContent={(_index, item) => {
+              if (item.kind === 'folder') {
+                return <BrowserFolderItem folder={item.folder} displayMode={displayMode} onContextMenu={folderContextMenu.handleOpenMenu} onSelectFolder={onSelectFolder} />
+              }
+              if (item.kind === 'section') {
+                return (
+                  <div data-browser-view-grid-heading="true">
+                    <BrowserSectionHeading section={item.section} count={item.count} displayMode={displayMode} locale={locale} />
+                  </div>
+                )
+              }
+              if (item.kind === 'group') {
+                return (
+                  <div data-browser-view-grid-heading="true">
+                    <GroupHeading group={item.group} groupBy={groupBy} displayMode={displayMode} locale={locale} />
+                  </div>
+                )
+              }
               return (
-                <div data-browser-view-grid-heading="true">
-                  <BrowserSectionHeading section={item.section} count={item.count} displayMode={displayMode} locale={locale} />
-                </div>
+                <BrowserEntryItem
+                  allEntries={browserAllEntries}
+                  dateDisplayFormat={dateDisplayFormat}
+                  displayPropsOverride={displayPropsOverride}
+                  entry={item.entry}
+                  displayMode={displayMode}
+                  typeEntryMap={typeEntryMap}
+                  onContextMenu={onEntryContextMenu}
+                  onOpenEntry={onOpenEntry}
+                />
               )
-            }
-            if (item.kind === 'group') {
-              return (
-                <div data-browser-view-grid-heading="true">
-                  <GroupHeading group={item.group} groupBy={groupBy} displayMode={displayMode} locale={locale} />
-                </div>
-              )
-            }
-            return (
-              <BrowserEntryItem
-                allEntries={browserAllEntries}
-                dateDisplayFormat={dateDisplayFormat}
-                displayPropsOverride={displayPropsOverride}
-                entry={item.entry}
-                displayMode={displayMode}
-                typeEntryMap={typeEntryMap}
-                onOpenEntry={onOpenEntry}
-              />
-            )
-          }}
-        />
-      </div>
+            }}
+          />
+        </div>
+        {folderContextMenuNode}
+      </>
     )
   }
 
   if (displayMode === 'rows') {
     return (
-      <div className="h-full overflow-x-auto">
-        <Virtuoso
-          style={{ height: '100%', minWidth: 760 }}
-          data={browserItems}
-          overscan={200}
-          computeItemKey={(_index, item) => item.key}
-          itemContent={(_index, item) => {
-            if (item.kind === 'folder') return <BrowserFolderItem folder={item.folder} displayMode={displayMode} onSelectFolder={onSelectFolder} />
-            if (item.kind === 'section') return <BrowserSectionHeading section={item.section} count={item.count} displayMode={displayMode} locale={locale} />
-            if (item.kind === 'group') return <GroupHeading group={item.group} groupBy={groupBy} displayMode={displayMode} locale={locale} />
-            return (
-              <BrowserEntryItem
-                allEntries={browserAllEntries}
-                dateDisplayFormat={dateDisplayFormat}
-                displayPropsOverride={displayPropsOverride}
-                entry={item.entry}
-                displayMode={displayMode}
-                typeEntryMap={typeEntryMap}
-                onOpenEntry={onOpenEntry}
-              />
-            )
-          }}
-        />
-      </div>
+      <>
+        <div className="h-full overflow-x-auto">
+          <Virtuoso
+            style={{ height: '100%', minWidth: 760 }}
+            data={browserItems}
+            overscan={200}
+            computeItemKey={(_index, item) => item.key}
+            itemContent={(_index, item) => {
+              if (item.kind === 'folder') return <BrowserFolderItem folder={item.folder} displayMode={displayMode} onContextMenu={folderContextMenu.handleOpenMenu} onSelectFolder={onSelectFolder} />
+              if (item.kind === 'section') return <BrowserSectionHeading section={item.section} count={item.count} displayMode={displayMode} locale={locale} />
+              if (item.kind === 'group') return <GroupHeading group={item.group} groupBy={groupBy} displayMode={displayMode} locale={locale} />
+              return (
+                <BrowserEntryItem
+                  allEntries={browserAllEntries}
+                  dateDisplayFormat={dateDisplayFormat}
+                  displayPropsOverride={displayPropsOverride}
+                  entry={item.entry}
+                  displayMode={displayMode}
+                  typeEntryMap={typeEntryMap}
+                  onContextMenu={onEntryContextMenu}
+                  onOpenEntry={onOpenEntry}
+                />
+              )
+            }}
+          />
+        </div>
+        {folderContextMenuNode}
+      </>
     )
   }
 
   return (
-    <Virtuoso
-      style={{ height: '100%' }}
-      data={browserItems}
-      overscan={200}
-      computeItemKey={(_index, item) => item.key}
-      itemContent={(_index, item) => {
-        if (item.kind === 'folder') return <BrowserFolderItem folder={item.folder} displayMode={displayMode} onSelectFolder={onSelectFolder} />
-        if (item.kind === 'section') return <BrowserSectionHeading section={item.section} count={item.count} displayMode={displayMode} locale={locale} />
-        if (item.kind === 'group') return <GroupHeading group={item.group} groupBy={groupBy} displayMode={displayMode} locale={locale} />
-        return renderItem(item.entry)
-      }}
-    />
+    <>
+      <Virtuoso
+        style={{ height: '100%' }}
+        data={browserItems}
+        overscan={200}
+        computeItemKey={(_index, item) => item.key}
+        itemContent={(_index, item) => {
+          if (item.kind === 'folder') return <BrowserFolderItem folder={item.folder} displayMode={displayMode} onContextMenu={folderContextMenu.handleOpenMenu} onSelectFolder={onSelectFolder} />
+          if (item.kind === 'section') return <BrowserSectionHeading section={item.section} count={item.count} displayMode={displayMode} locale={locale} />
+          if (item.kind === 'group') return <GroupHeading group={item.group} groupBy={groupBy} displayMode={displayMode} locale={locale} />
+          return renderItem(item.entry)
+        }}
+      />
+      {folderContextMenuNode}
+    </>
   )
 }
