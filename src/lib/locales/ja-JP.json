@@ -600,6 +600,7 @@
   "noteList.groupBy.author": "作成者",
   "noteList.groupBy.by": "{label}でグループ化",
   "noteList.groupBy.noValue": "値なし",
+  "noteList.browser.documents": "ドキュメント",
   "noteList.displayMode.label": "ノートリスト表示",
   "noteList.displayMode.list": "リスト",
   "noteList.displayMode.rows": "行",

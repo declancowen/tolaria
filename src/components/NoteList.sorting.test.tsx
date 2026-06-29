@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { NoteList } from './NoteList'
 import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS } from '../constants/appStorage'
+import { TOOLBAR_ICON_CLASSNAME } from './ui/toolbarIconButton'
 import { getSortComparator } from '../utils/noteListHelpers'
 import { buildNoteListProps, makeEntry, mockEntries, renderNoteList } from '../test-utils/noteListTestUtils'
 import type { ViewFile } from '../types'
@@ -178,6 +179,14 @@ describe('NoteList sort controls', () => {
   it('shows the sort button in flat list view', () => {
     renderNoteList()
     expect(screen.getByTestId('sort-button-__list__')).toBeInTheDocument()
+  })
+
+  it('normalizes sort and group trigger icon sizes', () => {
+    renderNoteList()
+    const groupIcon = screen.getByTestId('group-by-button').querySelector('svg')
+
+    expect(screen.getByTestId('sort-direction-icon-__list__')).toHaveClass(TOOLBAR_ICON_CLASSNAME)
+    expect(groupIcon).toHaveClass(TOOLBAR_ICON_CLASSNAME)
   })
 
   it('shows a per-group sort button in entity view', () => {

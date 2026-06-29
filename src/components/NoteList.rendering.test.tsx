@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { NoteList } from './NoteList'
+import { NoteItem } from './NoteItem'
 import { BrowserView } from './note-list/NoteListViews'
 import { openNoteListPropertiesPicker } from './note-list/noteListPropertiesEvents'
 import { AppPreferencesProvider } from '../hooks/useAppPreferences'
@@ -601,6 +602,211 @@ describe('NoteList rendering', () => {
       expect(cardButton?.firstElementChild).toHaveClass('w-full', 'min-w-0')
       const pillBand = cardButton?.querySelector('[data-browser-card-pill-band="true"]')
       expect(pillBand).toHaveClass('h-[46px]', 'content-end', 'overflow-hidden')
+    })
+  })
+
+  it('keeps folders structurally separate from document cards in browser card view', async () => {
+    const documentEntry = makeEntry({
+      path: '/vault/brief.md',
+      filename: 'brief.md',
+      title: 'Strategy Brief',
+      isA: 'Note',
+    })
+
+    const { container } = render(
+      <BrowserView
+        displayMode="cards"
+        documentGroups={[{ key: 'none', label: '', entries: [documentEntry] }]}
+        folderChildren={[{ name: 'Agents', path: 'Agents', children: [] }]}
+        groupBy="none"
+        typeEntryMap={{}}
+        onOpenEntry={vi.fn()}
+        onSelectFolder={vi.fn()}
+        query=""
+        renderItem={() => null}
+        searched={[documentEntry]}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('FOLDERS')).toBeInTheDocument()
+      expect(screen.getByText('Documents')).toBeInTheDocument()
+
+      const folderButton = screen.getByText('Agents').closest('button')
+      expect(folderButton).toBeInTheDocument()
+      expect(folderButton).toHaveClass('h-full', 'min-h-[72px]', 'items-center')
+      expect(folderButton?.firstElementChild).toHaveClass('justify-center')
+      expect(folderButton?.querySelector('svg')).toHaveClass('text-foreground')
+      expect(screen.getByText('Agents').nextElementSibling).toBeNull()
+
+      const headings = container.querySelectorAll('[data-browser-view-grid-heading="true"]')
+      expect(headings).toHaveLength(2)
+      const headingDividers = container.querySelectorAll('[data-browser-inset-divider="heading"]')
+      expect(headingDividers).toHaveLength(2)
+      expect(headings[0].firstElementChild).toHaveClass('px-0')
+      expect(headingDividers[0]).toHaveClass('border-b', 'border-border')
+      expect(headingDividers[0]).not.toHaveClass('mx-4')
+    })
+  })
+
+  it('renders browser list folders with compact rows and documents with regular note previews', async () => {
+    const documentEntry = makeEntry({
+      path: '/vault/brief.md',
+      filename: 'brief.md',
+      title: 'Strategy Brief',
+      isA: 'Note',
+      snippet: 'Preview text from the document body',
+    })
+    const onOpenEntry = vi.fn()
+
+    render(
+      <BrowserView
+        displayMode="list"
+        documentGroups={[{ key: 'none', label: '', entries: [documentEntry] }]}
+        folderChildren={[{ name: 'Agents', path: 'Agents', children: [] }]}
+        groupBy="none"
+        typeEntryMap={{}}
+        onOpenEntry={onOpenEntry}
+        onSelectFolder={vi.fn()}
+        query=""
+        renderItem={(entry) => (
+          <NoteItem
+            entry={entry}
+            isSelected={false}
+            typeEntryMap={{}}
+            onClickNote={(clickedEntry, event) => onOpenEntry(clickedEntry, event)}
+          />
+        )}
+        searched={[documentEntry]}
+      />,
+    )
+
+    await waitFor(() => {
+      const folderButton = screen.getByText('Agents').closest('button')
+      expect(folderButton).toHaveClass('h-12', 'border-0', 'px-4')
+      expect(folderButton).not.toHaveClass('border-b')
+
+      const folderTitleCell = screen.getByText('Agents').parentElement
+      expect(folderTitleCell).toHaveClass('flex', 'items-center', 'gap-2')
+      expect(screen.getByText('Preview text from the document body')).toBeInTheDocument()
+
+      const noteRow = screen.getByText('Strategy Brief').closest('[data-note-path]')
+      expect(noteRow).toHaveClass('border-b', 'border-transparent')
+      expect(noteRow?.querySelector('[data-note-row-divider="true"]')).toHaveClass('inset-x-4', 'border-b')
+      expect(document.querySelector('[data-browser-inset-divider="row"]')).not.toBeInTheDocument()
+    })
+  })
+
+  it('renders browser rows with aligned folder and document icons but no row dividers', async () => {
+    const documentEntry = makeEntry({
+      path: '/vault/brief.md',
+      filename: 'brief.md',
+      title: 'Strategy Brief',
+      isA: 'Note',
+      properties: { tags: ['marketing', 'permissions', 'workshop'] },
+    })
+
+    render(
+      <BrowserView
+        displayMode="rows"
+        documentGroups={[{ key: 'none', label: '', entries: [documentEntry] }]}
+        folderChildren={[{ name: 'Agents', path: 'Agents', children: [] }]}
+        groupBy="none"
+        typeEntryMap={{}}
+        onOpenEntry={vi.fn()}
+        onSelectFolder={vi.fn()}
+        query=""
+        renderItem={() => null}
+        searched={[documentEntry]}
+      />,
+    )
+
+    await waitFor(() => {
+      const folderButton = screen.getByText('Agents').closest('button')
+      const documentButton = screen.getByText('Strategy Brief').closest('button')
+      expect(folderButton).toHaveClass('h-12', 'border-0', 'px-4')
+      expect(documentButton).toHaveClass(
+        'h-12',
+        'border-0',
+        'px-4',
+        'gap-4',
+        'grid-cols-[minmax(160px,1.15fr)_minmax(180px,1.65fr)_76px_max-content_minmax(140px,0.9fr)]',
+      )
+      expect(folderButton).not.toHaveClass('border-b')
+      expect(documentButton).not.toHaveClass('border-b')
+
+      const folderTitleCell = screen.getByText('Agents').parentElement
+      const titleCell = screen.getByText('Strategy Brief').parentElement
+      expect(folderTitleCell).toHaveClass('flex', 'items-center', 'gap-2')
+      expect(titleCell?.querySelector('svg')).toHaveClass('text-muted-foreground')
+      expect(documentButton).not.toHaveTextContent('marketing, permissions, workshop')
+      const typePillStyle = screen.getByText('Note').parentElement?.getAttribute('style')
+      expect(screen.getByText('marketing')).toHaveClass('rounded')
+      expect(screen.getByText('marketing')).not.toHaveClass('bg-muted')
+      expect(screen.getByText('marketing').getAttribute('style')).toBe(typePillStyle)
+      expect(screen.getByText('permissions').getAttribute('style')).toBe(typePillStyle)
+      expect(document.querySelector('[data-browser-inset-divider="row"]')).not.toBeInTheDocument()
+    })
+  })
+
+  it('applies selected display properties to browser row and card entries', async () => {
+    const documentEntry = makeEntry({
+      path: '/vault/brief.md',
+      filename: 'brief.md',
+      title: 'Strategy Brief',
+      isA: 'Note',
+      status: 'Done',
+      properties: { tags: ['marketing'] },
+    })
+    const commonProps = {
+      documentGroups: [{ key: 'none', label: '', entries: [documentEntry] }],
+      displayPropsOverride: ['status'],
+      folderChildren: [],
+      groupBy: 'none' as const,
+      onOpenEntry: vi.fn(),
+      onSelectFolder: vi.fn(),
+      query: '',
+      renderItem: () => null,
+      searched: [documentEntry],
+      typeEntryMap: {},
+    }
+
+    const { rerender } = render(<BrowserView {...commonProps} displayMode="rows" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('• Done')).toHaveAttribute('style', 'background-color: var(--accent-blue-light); color: var(--accent-blue);')
+      expect(screen.queryByText('marketing')).not.toBeInTheDocument()
+    })
+
+    rerender(<BrowserView {...commonProps} displayMode="cards" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('• Done')).toHaveAttribute('style', 'background-color: var(--accent-blue-light); color: var(--accent-blue);')
+      expect(screen.queryByText('marketing')).not.toBeInTheDocument()
+    })
+  })
+
+  it('omits empty document group headings when only folders are visible', async () => {
+    const { container } = render(
+      <BrowserView
+        displayMode="cards"
+        documentGroups={[{ key: 'type:Note', label: 'Note', entries: [] }]}
+        folderChildren={[{ name: 'Agents', path: 'Agents', children: [] }]}
+        groupBy="type"
+        typeEntryMap={{}}
+        onOpenEntry={vi.fn()}
+        onSelectFolder={vi.fn()}
+        query=""
+        renderItem={() => null}
+        searched={[]}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('FOLDERS')).toBeInTheDocument()
+      expect(screen.getByText('Agents')).toBeInTheDocument()
+      expect(screen.queryByText('Note')).not.toBeInTheDocument()
+      expect(container.querySelectorAll('[data-browser-view-grid-heading="true"]')).toHaveLength(1)
     })
   })
 

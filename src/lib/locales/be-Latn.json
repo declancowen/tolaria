@@ -600,6 +600,7 @@
   "noteList.groupBy.author": "Aŭtar",
   "noteList.groupBy.by": "Hrupavać pa {label}",
   "noteList.groupBy.noValue": "Niama značeńnia",
+  "noteList.browser.documents": "Dakumienty",
   "noteList.displayMode.label": "Vyhliad spisa natatak",
   "noteList.displayMode.list": "Spis",
   "noteList.displayMode.rows": "Radki",

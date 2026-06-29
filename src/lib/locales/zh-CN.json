@@ -600,6 +600,7 @@
   "noteList.groupBy.author": "作者",
   "noteList.groupBy.by": "按{label}分组",
   "noteList.groupBy.noValue": "无值",
+  "noteList.browser.documents": "文档",
   "noteList.displayMode.label": "笔记列表视图",
   "noteList.displayMode.list": "列表",
   "noteList.displayMode.rows": "行",

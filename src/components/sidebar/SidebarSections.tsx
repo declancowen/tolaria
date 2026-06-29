@@ -124,8 +124,8 @@ export function ViewsSection({
           </Button>
         )}
       </SidebarGroupHeader>
-      {!collapsed && (
-        <div style={{ paddingBottom: SIDEBAR_SECTION_CONTENT_PADDING_BOTTOM }}>
+      {!collapsed && views.length > 0 && (
+        <div data-sidebar-section-body="views" style={{ paddingBottom: SIDEBAR_SECTION_CONTENT_PADDING_BOTTOM }}>
           {onReorderViews ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleViewDragEnd}>
               <SortableContext items={viewIds} strategy={verticalListSortingStrategy}>
@@ -322,8 +322,8 @@ export function TypesSection({
           />
         )}
       </div>
-      {!collapsed && (
-        <div style={{ paddingBottom: SIDEBAR_SECTION_CONTENT_PADDING_BOTTOM }}>
+      {!collapsed && visibleSections.length > 0 && (
+        <div data-sidebar-section-body="types" style={{ paddingBottom: SIDEBAR_SECTION_CONTENT_PADDING_BOTTOM }}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
               {visibleSections.map((group) => (

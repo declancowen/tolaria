@@ -600,6 +600,7 @@
   "noteList.groupBy.author": "Автор",
   "noteList.groupBy.by": "Групувати за {label}",
   "noteList.groupBy.noValue": "Немає значення",
+  "noteList.browser.documents": "Документи",
   "noteList.displayMode.label": "Перегляд списку нотаток",
   "noteList.displayMode.list": "Список",
   "noteList.displayMode.rows": "Рядки",

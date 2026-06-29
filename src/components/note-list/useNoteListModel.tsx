@@ -344,6 +344,7 @@ function useNoteListContent({
 
   return {
     customProperties,
+    dateDisplayFormat,
     displayPropsOverride,
     entityEntry,
     handleSortChange,
@@ -630,6 +631,7 @@ export interface NoteListProps {
 }
 
 function buildNoteListLayoutModel(params: {
+  entries: VaultEntry[]
   displayMode: NoteListDisplayMode
   documentGroups: NoteListDocumentGroup[]
   folderChildren: FolderNode[]
@@ -660,6 +662,9 @@ function buildNoteListLayoutModel(params: {
 }) {
   return {
     title: resolveHeaderTitle(params.selection, params.content.typeDocument, params.views, params.locale),
+    allEntries: params.entries,
+    dateDisplayFormat: params.content.dateDisplayFormat,
+    displayPropsOverride: params.content.displayPropsOverride,
     displayMode: params.displayMode,
     documentGroups: params.documentGroups,
     folderChildren: params.folderChildren,
@@ -888,6 +893,7 @@ export function useNoteListModel({
   }, [isNoteListSearchActive, toggleSearchShortcut])
 
   return buildNoteListLayoutModel({
+    entries,
     displayMode,
     documentGroups,
     folderChildren,

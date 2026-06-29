@@ -1,6 +1,6 @@
 import { StackSimple } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
-import { TOOLBAR_ICON_SIZE } from '@/components/ui/toolbarIconButton'
+import { TOOLBAR_ICON_CLASSNAME, TOOLBAR_ICON_SIZE } from '@/components/ui/toolbarIconButton'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,7 +78,7 @@ export function GroupByDropdown({
           aria-label={translate(locale, 'noteList.groupBy.by', { label: currentLabel })}
           data-testid="group-by-button"
         >
-          <StackSimple size={TOOLBAR_ICON_SIZE} weight="regular" />
+          <StackSimple className={TOOLBAR_ICON_CLASSNAME} size={TOOLBAR_ICON_SIZE} weight="regular" />
           <span className="text-[12px] font-medium">{triggerLabel}</span>
         </Button>
       </DropdownMenuTrigger>

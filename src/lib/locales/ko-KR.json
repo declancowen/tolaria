@@ -600,6 +600,7 @@
   "noteList.groupBy.author": "작성자",
   "noteList.groupBy.by": "{label}(으)로 그룹화",
   "noteList.groupBy.noValue": "값 없음",
+  "noteList.browser.documents": "문서",
   "noteList.displayMode.label": "노트 목록 표시",
   "noteList.displayMode.list": "목록",
   "noteList.displayMode.rows": "행",

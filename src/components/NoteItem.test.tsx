@@ -202,6 +202,21 @@ describe('NoteItem', () => {
     expect(screen.queryByTestId('change-status-icon')).not.toBeInTheDocument()
   })
 
+  it('keeps selected note rows visually neutral without the old active tint', () => {
+    const entry = makeEntry({ filename: 'selected.md', title: 'Selected Note' })
+
+    render(<NoteItem entry={entry} isSelected={true} typeEntryMap={{}} onClickNote={vi.fn()} />)
+
+    const row = screen.getByText('Selected Note').closest('[data-note-path]')!
+    expect(row).toHaveAttribute('aria-selected', 'true')
+    expect(row).toHaveClass('border-b', 'border-transparent')
+    expect(row).not.toHaveClass('border-l-[3px]')
+    expect(row.getAttribute('style') ?? '').toBe('padding: 14px 16px;')
+    expect(row.getAttribute('style') ?? '').not.toContain('background')
+    expect(row.getAttribute('style') ?? '').not.toContain('border-left')
+    expect(row.querySelector('[data-note-row-divider="true"]')).toHaveClass('inset-x-4', 'border-b')
+  })
+
   it('adds more breathing room between note sections', () => {
     const entry = makeEntry({
       title: 'Spaced note',

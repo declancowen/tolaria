@@ -600,6 +600,7 @@
   "noteList.groupBy.author": "Penulis",
   "noteList.groupBy.by": "Kelompokkan menurut {label}",
   "noteList.groupBy.noValue": "Tanpa nilai",
+  "noteList.browser.documents": "Dokumen",
   "noteList.displayMode.label": "Tampilan daftar catatan",
   "noteList.displayMode.list": "Daftar",
   "noteList.displayMode.rows": "Baris",

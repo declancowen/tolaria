@@ -600,6 +600,7 @@
   "noteList.groupBy.author": "Autore",
   "noteList.groupBy.by": "Raggruppa per {label}",
   "noteList.groupBy.noValue": "Nessun valore",
+  "noteList.browser.documents": "Documenti",
   "noteList.displayMode.label": "Visualizzazione elenco note",
   "noteList.displayMode.list": "Elenco",
   "noteList.displayMode.rows": "Righe",

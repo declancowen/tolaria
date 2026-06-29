@@ -234,9 +234,10 @@ function FolderTreeBody({
   toggleFolder,
 }: FolderTreeBodyProps) {
   if (sectionCollapsed) return null
+  if (displayedFolders.length === 0 && !isCreating) return null
 
   return (
-    <div className="flex flex-col gap-0.5 pb-2">
+    <div className="flex flex-col gap-0.5 pb-2" data-sidebar-section-body="folders">
       {displayedFolders.map((node) => (
         <FolderTreeRow
           key={folderNodeKey(node)}

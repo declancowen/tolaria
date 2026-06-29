@@ -83,6 +83,9 @@ function MultiSelectBar({
 }
 
 function NoteListContent({
+  allEntries,
+  dateDisplayFormat,
+  displayPropsOverride,
   entitySelection,
   searchedGroups,
   query,
@@ -108,6 +111,9 @@ function NoteListContent({
   onSelectFolder,
 }: Pick<
   NoteListLayoutProps,
+  | 'allEntries'
+  | 'dateDisplayFormat'
+  | 'displayPropsOverride'
   | 'entitySelection'
   | 'searchedGroups'
   | 'query'
@@ -152,7 +158,10 @@ function NoteListContent({
         />
       ) : shouldUseBrowserView ? (
         <BrowserView
+          allEntries={allEntries}
+          dateDisplayFormat={dateDisplayFormat}
           displayMode={displayMode}
+          displayPropsOverride={displayPropsOverride}
           documentGroups={documentGroups}
           folderChildren={folderChildren}
           groupBy={groupBy}
@@ -186,6 +195,9 @@ function NoteListContent({
 }
 
 function NoteListBody({
+  allEntries,
+  dateDisplayFormat,
+  displayPropsOverride,
   handleListKeyDown,
   noteListContainerRef,
   handleNoteListBlur,
@@ -220,6 +232,9 @@ function NoteListBody({
   loading,
 }: Pick<
   NoteListLayoutProps,
+  | 'allEntries'
+  | 'dateDisplayFormat'
+  | 'displayPropsOverride'
   | 'handleListKeyDown'
   | 'noteListContainerRef'
   | 'handleNoteListBlur'
@@ -268,6 +283,9 @@ function NoteListBody({
       data-testid="note-list-container"
     >
       <NoteListContent
+        allEntries={allEntries}
+        dateDisplayFormat={dateDisplayFormat}
+        displayPropsOverride={displayPropsOverride}
         entitySelection={entitySelection}
         searchedGroups={searchedGroups}
         query={query}

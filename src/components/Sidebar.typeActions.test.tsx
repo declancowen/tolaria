@@ -79,6 +79,27 @@ afterEach(() => {
 })
 
 describe('Sidebar Type row actions', () => {
+  it('does not add empty body padding when expanded sidebar sections have no items', () => {
+    const { container } = renderSidebar({
+      entries: [],
+      folders: [],
+      views: [],
+      onCreateFolder: vi.fn(),
+      onCreateNewType: vi.fn(),
+      onCreateView: vi.fn(),
+    })
+
+    expect(screen.getByText('VIEWS')).toBeInTheDocument()
+    expect(screen.getByText('TYPES')).toBeInTheDocument()
+    expect(screen.getByText('FOLDERS')).toBeInTheDocument()
+
+    const paddedEmptyBodies = Array.from(container.querySelectorAll('div')).filter((element) => (
+      element.getAttribute('style')?.includes('padding-bottom: 8px')
+      || element.classList.contains('pb-2')
+    ))
+    expect(paddedEmptyBodies).toHaveLength(0)
+  })
+
   it('shows Type-specific context menu labels on right-click', () => {
     openProjectsContextMenu()
     expect(screen.getByText('Change display name…')).toBeInTheDocument()

@@ -600,6 +600,7 @@
   "noteList.groupBy.author": "Tác giả",
   "noteList.groupBy.by": "Nhóm theo {label}",
   "noteList.groupBy.noValue": "Không có giá trị",
+  "noteList.browser.documents": "Tài liệu",
   "noteList.displayMode.label": "Chế độ xem danh sách ghi chú",
   "noteList.displayMode.list": "Danh sách",
   "noteList.displayMode.rows": "Hàng",

@@ -600,6 +600,7 @@
   "noteList.groupBy.author": "Autor",
   "noteList.groupBy.by": "Grupuj według {label}",
   "noteList.groupBy.noValue": "Brak wartości",
+  "noteList.browser.documents": "Dokumenty",
   "noteList.displayMode.label": "Widok listy notatek",
   "noteList.displayMode.list": "Lista",
   "noteList.displayMode.rows": "Wiersze",

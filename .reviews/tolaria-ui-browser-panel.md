@@ -32,6 +32,7 @@
 - `src/App.tsx`, `src/components/EditorRightPanel.tsx`, `src/components/Inspector.tsx`, `src/components/note-list/NoteListViews.tsx`, and regression tests for browser AI panel / grouped card headings / properties divider — added Turn 4
 - `src/hooks/useNoteActions.ts`, `src/hooks/useNoteCreation.ts`, create-note focus tests, and smoke expectations for editor-surface note creation — added Turn 6
 - `tests/smoke/missing-string-metadata-open-note.spec.ts` and `tests/smoke/save-before-note-switch.spec.ts` — added Turn 7
+- `src/components/NoteItem.tsx`, `src/components/sidebar/SidebarSections.tsx`, and sidebar/note-list rendering tests — added Turn 11
 
 ## Hotspots
 
@@ -53,17 +54,83 @@
 - created-note browser-to-editor handoff and title-focus ownership — added Turn 6
 - smoke-test note switching under the two-column browser/editor contract — added Turn 7
 - browser-surface Back behavior when list/grid opens replace the active editor tab — added Turn 10
+- browser folder/document grouping, list-preview parity, row/card spacing/property pills, sort/group trigger icon sizing, and empty sidebar-section height — added Turn 11
 
 ## Review status
 
 | Field | Value |
 |-------|-------|
 | **Review started** | 2026-06-26 22:29:20 BST |
-| **Last reviewed** | 2026-06-27 14:52:12 BST |
-| **Total turns** | 10 |
+| **Last reviewed** | 2026-06-29 15:36:19 BST |
+| **Total turns** | 11 |
 | **Open findings** | 0 |
 | **Resolved findings** | 13 |
 | **Accepted findings** | 0 |
+
+## Turn 11 — 2026-06-29 14:57:58 BST
+
+| Field | Value |
+|-------|-------|
+| **Commit** | 8f0a2de5 plus working tree |
+| **IDE / Agent** | Codex |
+
+**Summary:** Deep-reviewed the browser/list presentation patch that separates folder and document sections, keeps list-mode documents on the normal Inbox-style preview renderer, tightens row spacing, aligns card section headings with the card grid, renders row/card tags as type-colored pills, honors selected display properties in row/card entries, normalizes sort/group trigger icon sizing, removes folder row dividers, neutralizes the obsolete active note tint, and avoids empty expanded-sidebar padding.
+**Outcome:** all clear with low-risk unknowns.
+**Risk score:** medium — the change touches shared note-list rendering paths, NoteItem row styling, sidebar section bodies, localization, and focused regression tests.
+**Change archetypes:** broad UI presentation, virtualized note-list modes, sidebar empty-state spacing, selection-state visual behavior, localization.
+**Intended change:** Folder browsing should show folders first and documents after them without misleading folder metadata rows; list mode should keep document previews consistent with Inbox/All Notes; rows mode should keep compact aligned rows with tighter right-side spacing; card headings/dividers should align with the card grid; row/card display properties should follow the picker; sort and group trigger icons should share the same rendered toolbar size; empty expanded sidebar sections should not grow from padding-only bodies.
+**Intent vs actual:** `BrowserView` now builds explicit folder/document section headings only when there is content, skips empty document groups, spans section headings in card grids, renders list-mode documents through the existing `renderItem` path, keeps row-mode documents compact with icons, uses a tighter row grid, renders tags as type-colored pills, preserves resolved property-chip styling for selected properties, applies `displayPropsOverride` in row/card entries, and keeps folder cards/rows free of empty metadata. `SortDropdown` and `GroupByDropdown` both force trigger SVGs through the shared toolbar icon size class. `NoteItem` keeps selected rows neutral while retaining an inset divider. Sidebar views/types/folders avoid padded empty bodies.
+**Confidence:** high for the React render paths covered by focused tests; medium for pixel-perfect native visual parity until a fresh manual screenshot pass is done on the rebuilt app.
+**Coverage note:** Added focused rendering assertions for card folder/document separation, card heading/divider width, list-mode document preview parity, row-mode folder/document height and icon alignment, tighter row columns, type-colored tag pills, selected display properties with resolved chip styling in row/card entries, normalized sort/group trigger icons, omitted empty document groups, neutral selected note styling, and empty sidebar section bodies.
+**Finding triage:** No new findings. The most likely bug classes were list/row mode confusion, missing or over-inset section dividers, ignored property-picker state in custom row/card renderers, unintended folder dividers, stale selected-row tint, and padding-only sidebar expansion; each has direct code ownership and focused test coverage.
+**Static/analyzer evidence:** ESLint, TypeScript, focused Vitest, localization validation, whitespace check, demo-vault dirt check, and Apple Silicon Tauri build passed. CodeScene MCP/CLI and Codacy CLI/MCP were unavailable in this environment.
+**Architecture impact:** None. The change stays inside existing browser view, note item, and sidebar rendering boundaries. No vault data model, persistence, routing, native command, or storage contract changed.
+**Deep-review evidence:** Correctness/safety pass checked list/cards/rows mode separation, section visibility for empty and populated folder/document variants, existing Inbox-style list preview reuse, row/card display-property override behavior, selection-state behavior, and localization presence. Maintainability/structure pass checked that browser section construction stays centralized in `buildBrowserViewItems`, document list previews reuse the existing `renderItem` boundary, row/card pill rendering stays inside `BrowserEntryItem`, and sidebar empty-section behavior remains local to section bodies.
+**Bug classes / invariants checked:** list mode document rows remain `NoteItem` previews; row mode document rows remain compact rows; card headings span the virtualized grid and align with the card grid; section headings render only for content; row/card custom entries honor selected display properties; tag pills share the type pill color; folder rows have no document-style metadata or row dividers; note row dividers are inset; selected rows no longer imply a right-column active editor; empty expanded sidebar sections do not add body padding.
+**Branch totality:** Rechecked against Turn 8 card-grid layout assumptions and Turn 10 browser-surface navigation assumptions. This patch changes presentation only and does not alter the note-open/navigation handoff fixed in the prior turns.
+**Sibling closure:** Browser cards, list, and rows were checked separately; folder and document entries were checked separately; default and custom display-property row/card paths were checked; sidebar views, types, and folders empty bodies were checked together; all locale catalogs received the new document-section label.
+**Remediation impact surface:** `NoteListViews`, `NoteListLayout`, `useNoteListModel`, `NoteItem`, `FolderTree`, `SidebarSections`, focused tests, and locale catalogs. No persistence, native command, or vault fixtures changed.
+**Residual risk / unknowns:** Native screenshot/manual visual QA was not rerun after the final build; residual risk is limited to pixel spacing in WKWebView because focused rendering tests and the Apple Silicon build passed.
+
+### Validation
+
+- `pnpm exec vitest run src/components/NoteList.sorting.test.tsx src/components/NoteList.rendering.test.tsx src/components/NoteItem.test.tsx src/components/Sidebar.typeActions.test.tsx` — passed, 126 tests
+- `pnpm lint` — passed
+- `npx tsc --noEmit` — passed
+- `pnpm build` — passed
+- `pnpm l10n:validate` — passed
+- `git diff --check` — passed
+- `pnpm tauri build --target aarch64-apple-darwin --bundles app --config '{"bundle":{"createUpdaterArtifacts":false}}'` — passed
+- `file src-tauri/target/aarch64-apple-darwin/release/bundle/macos/Tolaria.app/Contents/MacOS/tolaria` — confirmed `Mach-O 64-bit executable arm64`
+- `git status --short -- demo-vault demo-vault-v2` — clean
+- CodeScene file/project health — not run; no CodeScene MCP tool exposed and `cs` CLI unavailable
+- Codacy scan — not run; no Codacy MCP tool exposed and `.codacy/cli.sh`/`codacy` unavailable
+
+### Branch-totality proof
+
+- **Non-delta files/systems re-read:** `NoteListViews`, `NoteListLayout`, `useNoteListModel`, `NoteItem`, `FolderTree`, `SidebarSections`, focused rendering tests, locale diff, and prior browser-panel review ledger.
+- **Prior open findings rechecked:** none open from Turns 1-10.
+- **Prior resolved/adjacent areas revalidated:** Turn 8 virtualized card-grid heading span remains covered; Turn 10 browser/editor navigation is untouched because document open handlers and history state are unchanged.
+- **Hotspots or sibling paths revisited:** browser cards/list/rows, grouped and ungrouped document sections, default and selected display-property pill bands, folder-only and folder-plus-document states, selected note row styling, and empty expanded sidebar views/types/folders.
+- **Dependency/adjacent surfaces revalidated:** ESLint, TypeScript, focused Vitest, localization validation, whitespace, demo-vault hygiene, and arm64 Tauri packaging.
+- **Why this is enough:** The changed behavior is presentational and scoped to rendering branches that now have direct regression coverage; the existing navigation and persistence boundaries were not modified.
+
+### Challenger pass
+
+- `not needed` — Medium-risk UI presentation patch. The weakest assumption is native WKWebView visual spacing, recorded as a low-risk unknown after a successful Apple Silicon build.
+
+### Resolved / Carried / New findings
+
+No open findings.
+
+### Recommendations
+
+1. **Fix first:** none open.
+2. **Then address:** commit and push the reviewed UI presentation patch.
+3. **Patterns noticed:** keep list-mode documents on the normal `NoteItem` preview path; use the compact browser-entry renderer only for rows/cards where the mode intentionally differs.
+4. **Suggested approach:** if further spacing tweaks are needed, add focused assertions for the exact section/row variant before rebuilding.
+5. **Architecture transition:** none.
+6. **Defer on purpose:** CodeScene and Codacy remain deferred because their local/MCP entrypoints are unavailable here.
 
 ## Turn 10 — 2026-06-27 14:52:12 BST
 

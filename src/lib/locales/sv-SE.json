@@ -600,6 +600,7 @@
   "noteList.groupBy.author": "Författare",
   "noteList.groupBy.by": "Gruppera efter {label}",
   "noteList.groupBy.noValue": "Inget värde",
+  "noteList.browser.documents": "Dokument",
   "noteList.displayMode.label": "Visning av anteckningslista",
   "noteList.displayMode.list": "Lista",
   "noteList.displayMode.rows": "Rader",
